@@ -203,6 +203,7 @@ export function LeadsDataTable() {
 
   // Form Inputs State (Add / Edit)
   const [formInputs, setFormInputs] = useState({
+    student_id: "",
     student_name: "",
     phone_number: "",
     email: "",
@@ -534,6 +535,7 @@ export function LeadsDataTable() {
 
   const resetForm = () => {
     setFormInputs({
+      student_id: "",
       student_name: "",
       phone_number: "",
       email: "",
@@ -552,6 +554,7 @@ export function LeadsDataTable() {
   const openEditModal = (lead: Lead) => {
     setSelectedLead(lead);
     setFormInputs({
+      student_id: lead.student_id || "",
       student_name: lead.student_name,
       phone_number: lead.phone_number,
       email: lead.email || "",
@@ -1164,18 +1167,18 @@ export function LeadsDataTable() {
               {/* Modal Form Body */}
               <form onSubmit={isAddModalOpen ? handleAddLead : handleEditLead} className="p-6 overflow-y-auto space-y-4 flex-1">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Student ID (Read Only in Edit) */}
-                  {isEditModalOpen && selectedLead && (
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Student ID</label>
-                      <input
-                        type="text"
-                        readOnly
-                        value={selectedLead.student_id || 'N/A'}
-                        className="w-full bg-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold text-slate-500 cursor-not-allowed"
-                      />
-                    </div>
-                  )}
+                  {/* Student ID */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Student ID {isEditModalOpen ? '' : '(Optional)'}</label>
+                    <input
+                      type="text"
+                      readOnly={isEditModalOpen}
+                      value={formInputs.student_id}
+                      onChange={(e) => !isEditModalOpen && setFormInputs({ ...formInputs, student_id: e.target.value })}
+                      placeholder="Auto-generated if left blank"
+                      className={`w-full border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:outline-none ${isEditModalOpen ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-[#0f5a3e] dark:focus:ring-[#d3f46f] text-slate-900 dark:text-slate-100'}`}
+                    />
+                  </div>
 
                   {/* Name */}
                   <div className="space-y-1.5">

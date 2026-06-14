@@ -1,26 +1,232 @@
 @import "tailwindcss";
 
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f6f8;
+  --foreground: #1c1d21;
+
+  --card: #ffffff;
+  --card-foreground: #1c1d21;
+
+  --popover: #ffffff;
+  --popover-foreground: #1c1d21;
+
+  --primary: #d3f46f; /* Neon yellow-green */
+  --primary-foreground: #1c1d21;
+
+  --secondary: #1c1d21; /* Dark sidebar */
+  --secondary-foreground: #ffffff;
+
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+
+  --accent: #d3f46f;
+  --accent-foreground: #1c1d21;
+
+  --destructive: #ff6b6b;
+  --destructive-foreground: #ffffff;
+
+  --border: #f1f5f9;
+  --input: #f1f5f9;
+  --ring: #d3f46f;
+
+  --radius: 1.5rem;
+
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.4);
+}
+
+.dark {
+  --background: #1c1d21;
+  --foreground: #f4f6f8;
+
+  --card: #27292d;
+  --card-foreground: #f4f6f8;
+
+  --popover: #27292d;
+  --popover-foreground: #f4f6f8;
+
+  --primary: #d3f46f;
+  --primary-foreground: #1c1d21;
+
+  --secondary: #27292d;
+  --secondary-foreground: #f4f6f8;
+
+  --muted: #27292d;
+  --muted-foreground: #94a3b8;
+
+  --accent: #d3f46f;
+  --accent-foreground: #1c1d21;
+
+  --destructive: #ff6b6b;
+  --destructive-foreground: #ffffff;
+
+  --border: #27292d;
+  --input: #27292d;
+  --ring: #d3f46f;
+
+  --glass-bg: rgba(39, 41, 45, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.05);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), sans-serif;
 }
+
+@layer utilities {
+  .glass {
+    @apply bg-[var(--glass-bg)] backdrop-blur-md border border-[var(--glass-border)] shadow-sm;
+  }
+}
+
+@media print {
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    height: auto !important;
+    overflow: visible !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+
+  /* Force elements to render backgrounds */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Exclude scrollbars and extra padding */
+  .scrollbar-hide {
+    scrollbar-width: none !important;
+  }
+  ::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* Custom helper to avoid break inside card widgets */
+  .print-break-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Ensure text is dark and high-contrast */
+  p, h1, h2, h3, h4, th, td, span {
+    color: #1e293b !important;
+  }
+
+  /* Table styling enhancements for print */
+  table {
+    page-break-inside: auto !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  /* Hide shadows which can look blurry or weird in PDF exports */
+  .shadow-sm, .shadow-md, .shadow-xl, .shadow-lg, .shadow {
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  /* Force rounded corners to render nicely on cards */
+  .rounded-3xl, .rounded-\[28px\] {
+    border-radius: 12px !important;
+  }
+}
+
+/* Custom scrollbar utility */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 10px;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 10px;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(211, 244, 111, 0.6);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(211, 244, 111, 0.45);
+}
+
+/* Firefox scrollbar support */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.6) rgba(0, 0, 0, 0.02);
+}
+
+.dark .custom-scrollbar {
+  scrollbar-color: rgba(211, 244, 111, 0.6) rgba(255, 255, 255, 0.02);
+}
+

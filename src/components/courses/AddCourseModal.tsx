@@ -58,6 +58,7 @@ export function AddCourseModal({ isOpen, onClose, onSuccess, courseToEdit }: Add
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    const isEdit = !!courseToEdit;
     
     try {
       const payload = {
@@ -67,7 +68,6 @@ export function AddCourseModal({ isOpen, onClose, onSuccess, courseToEdit }: Add
         discount: parseFloat(formData.discount) || 0,
       };
 
-      const isEdit = !!courseToEdit;
       const url = isEdit ? `${BACKEND_URL}/api/courses/${courseToEdit.id}` : `${BACKEND_URL}/api/courses`;
       const method = isEdit ? "PUT" : "POST";
 

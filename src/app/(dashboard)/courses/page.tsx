@@ -77,6 +77,7 @@ export default function CoursesPage() {
   const [dbCourses, setDbCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [activeTab, setActiveTab] = useState<"catalog" | "analytics" | "ai-copilot">("catalog");
 
   // Filter States
@@ -145,10 +146,10 @@ export default function CoursesPage() {
 
   // Compute dynamic database counts and merge into catalog courses
   const dynamicCoursesList = useMemo(() => {
-    return dbCourses.map(c => {
-      const enrolled = admissions.filter(a => a.course === c.title).length;
-      const totalLead = leads.filter(l => l.interested_course === c.title).length;
-      const rev = admissions.filter(a => a.course === c.title).reduce((s, a) => s + a.amount_paid, 0);
+    return (dbCourses || []).map(c => {
+      const enrolled = (admissions || []).filter(a => a.course === c.title).length;
+      const totalLead = (leads || []).filter(l => l.interested_course === c.title).length;
+      const rev = (admissions || []).filter(a => a.course === c.title).reduce((s, a) => s + a.amount_paid, 0);
 
       return {
         ...c,
@@ -162,17 +163,17 @@ export default function CoursesPage() {
   // Unique lists computed from dynamic courses
   const categories = useMemo(() => {
     const list = new Set<string>();
-    dbCourses.forEach(c => { if (c.category) list.add(c.category); });
+    (dbCourses || []).forEach(c => { if (c.category) list.add(c.category); });
     return ["All Categories", ...Array.from(list).sort()];
   }, [dbCourses]);
 
   // Filter Catalog List
   const filteredCourses = useMemo(() => {
-    return dynamicCoursesList.filter(c => {
+    return (dynamicCoursesList || []).filter(c => {
       const matchesSearch = 
-        c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.syllabus.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        c.trainerName.toLowerCase().includes(searchQuery.toLowerCase());
+        (c.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.syllabus || []).some(s => s.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (c.trainerName || "").toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesCat = selectedCategory === "All Categories" || c.category === selectedCategory;
       
@@ -206,7 +207,7 @@ export default function CoursesPage() {
 
   // 1. Most Demanded Courses (Lead volumes)
   const demandChartData = useMemo(() => {
-    return dynamicCoursesList
+    return (dynamicCoursesList || [])
       .map(c => ({ name: c.title, leads: c.leadsGenerated || 40 }))
       .sort((a, b) => b.leads - a.leads)
       .slice(0, 5);
@@ -214,7 +215,7 @@ export default function CoursesPage() {
 
   // 2. Highest Revenue Slices
   const revenueChartData = useMemo(() => {
-    return dynamicCoursesList
+    return (dynamicCoursesList || [])
       .map(c => ({ name: c.title, value: c.revenue || 500000 }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 4);
@@ -233,8 +234,8 @@ export default function CoursesPage() {
 
   // AI Recommended Courses computation
   const aiRecommendedCourses = useMemo(() => {
-    const matched = dynamicCoursesList.filter(c => c.category.toLowerCase().includes(studentInterest.toLowerCase()) || studentInterest.toLowerCase().includes(c.category.toLowerCase()));
-    if (matched.length === 0) return dynamicCoursesList.slice(0, 2);
+    const matched = (dynamicCoursesList || []).filter(c => (c.category || "").toLowerCase().includes(studentInterest.toLowerCase()) || studentInterest.toLowerCase().includes((c.category || "").toLowerCase()));
+    if (matched.length === 0) return (dynamicCoursesList || []).slice(0, 2);
     return matched;
   }, [studentInterest, dynamicCoursesList]);
 
@@ -244,30 +245,33 @@ export default function CoursesPage() {
     setPredictedAdmissionScore(base);
   }, [studentInterest]);
 
-  // Helper Custom dropdown menu
   const renderFilterDropdown = (
-    label: string, 
     value: string, 
     options: string[], 
     onChange: (val: string) => void, 
     id: string
   ) => {
     const isOpen = activeDropdown === id;
+    const isActiveFilter = !value.startsWith("All");
+
     return (
       <div className="relative">
         <button 
           onClick={() => setActiveDropdown(isOpen ? null : id)}
-          className="flex items-center gap-2 bg-white rounded-xl px-4 py-2.5 border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm"
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 border text-[11.5px] font-bold transition-all shadow-sm ${
+            isActiveFilter 
+              ? 'bg-[#0f5a3e] border-[#0f5a3e] text-white' 
+              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+          }`}
         >
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}:</span>
-          <span className="text-slate-900 font-black">{value}</span>
-          <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+          <span>{value}</span>
+          <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         </button>
         
         {isOpen && (
           <>
             <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-            <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-100 rounded-2xl shadow-xl z-30 py-1.5 animate-in fade-in slide-in-from-top-2 duration-100 max-h-60 overflow-y-auto">
+            <div className="absolute left-0 mt-2 w-52 bg-white border border-slate-100 rounded-2xl shadow-xl z-30 py-1.5 animate-in fade-in slide-in-from-top-2 duration-100 max-h-60 overflow-y-auto">
               {options.map((opt) => (
                 <button
                   key={opt}
@@ -315,7 +319,7 @@ export default function CoursesPage() {
           </div>
         </div>
 
-        <button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2 bg-[#0f5a3e] hover:bg-[#0a3f2b] text-white px-5 py-2.5 rounded-xl text-xs font-black hover:scale-105 transition-all shadow-md shadow-[#0f5a3e]/10 self-start md:self-auto">
+        <button onClick={() => { setEditingCourse(null); setIsAddModalOpen(true); }} className="flex items-center gap-2 bg-[#0f5a3e] hover:bg-[#0a3f2b] text-white px-5 py-2.5 rounded-xl text-xs font-black hover:scale-105 transition-all shadow-md shadow-[#0f5a3e]/10 self-start md:self-auto">
           <Plus className="w-4 h-4" />
           Add Course
         </button>
@@ -351,24 +355,24 @@ export default function CoursesPage() {
       {activeTab === "catalog" && (
         <div className="space-y-6">
           {/* Filters Toolbar */}
-          <div className="bg-slate-50/85 rounded-[24px] p-4 border border-slate-200/50 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-sm">
+          <div className="bg-slate-50/80 rounded-[24px] p-4 border border-slate-200/60 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+            <div className="relative w-full xl:max-w-[320px] shrink-0">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search by topic, course title, trainer..."
+                placeholder="Search by topic, title..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 border border-slate-200 outline-none focus:border-slate-400 transition-colors shadow-sm"
+                className="w-full bg-white rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 border border-slate-200 outline-none focus:border-[#0f5a3e] focus:ring-1 focus:ring-[#0f5a3e] transition-colors shadow-sm"
               />
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              {renderFilterDropdown("Category", selectedCategory, categories, setSelectedCategory, "cat")}
-              {renderFilterDropdown("Duration", selectedDuration, ["All Durations", "3 Months", "6 Months"], setSelectedDuration, "dur")}
-              {renderFilterDropdown("Fee Range", selectedFeeRange, ["All Fees", "Under ₹50k", "₹50k - ₹90k", "Above ₹90k"], setSelectedFeeRange, "fee")}
-              {renderFilterDropdown("Popular", selectedPopularity, ["All Courses", "Popular (Rating >= 4.7)"], setSelectedPopularity, "pop")}
-              {renderFilterDropdown("Batches", selectedActiveBatches, ["All Batches", "Admissions Open"], setSelectedActiveBatches, "batch")}
+            <div className="flex flex-wrap items-center gap-2">
+              {renderFilterDropdown(selectedCategory, categories, setSelectedCategory, "cat")}
+              {renderFilterDropdown(selectedDuration, ["All Durations", "3 Months", "6 Months"], setSelectedDuration, "dur")}
+              {renderFilterDropdown(selectedFeeRange, ["All Fees", "Under ₹50k", "₹50k - ₹90k", "Above ₹90k"], setSelectedFeeRange, "fee")}
+              {renderFilterDropdown(selectedPopularity, ["All Courses", "Popular (Rating >= 4.7)"], setSelectedPopularity, "pop")}
+              {renderFilterDropdown(selectedActiveBatches, ["All Batches", "Admissions Open"], setSelectedActiveBatches, "batch")}
             </div>
           </div>
 
@@ -429,12 +433,23 @@ export default function CoursesPage() {
                     </span>
                   </div>
 
-                  <button 
-                    onClick={() => setViewingCourse(course)}
-                    className="w-full py-2.5 rounded-xl bg-[#0f5a3e] hover:bg-[#0a3f2b] text-white text-xs font-black shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-1"
-                  >
-                    View Details
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setEditingCourse(course);
+                        setIsAddModalOpen(true);
+                      }}
+                      className="flex-[0.8] py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black shadow-sm transition-all flex items-center justify-center gap-1"
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => setViewingCourse(course)}
+                      className="flex-[2] py-2.5 rounded-xl bg-[#0f5a3e] hover:bg-[#0a3f2b] text-white text-xs font-black shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-1"
+                    >
+                      View Details
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -670,7 +685,7 @@ export default function CoursesPage() {
                 <div className="space-y-3">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Syllabus modules roadmap</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                    {viewingCourse.syllabus.map((topic, idx) => (
+                    {(viewingCourse.syllabus || []).map((topic, idx) => (
                       <div key={idx} className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-start gap-2.5">
                         <CheckCircle2 className="w-4 h-4 text-[#0f5a3e] shrink-0 mt-0.5" />
                         <span className="text-slate-700 font-bold leading-normal">{topic}</span>
@@ -697,12 +712,12 @@ export default function CoursesPage() {
                 <div className="space-y-3">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Verified Student Reviews</h4>
                   <div className="space-y-2.5">
-                    {viewingCourse.reviews.map((rev, idx) => (
+                    {(viewingCourse.reviews || []).map((rev, idx) => (
                       <div key={idx} className="border border-slate-100 rounded-2xl p-4 space-y-2">
                         <div className="flex justify-between items-center">
                           <p className="text-slate-800 font-extrabold text-xs">{rev.student}</p>
                           <div className="flex gap-0.5">
-                            {Array.from({ length: rev.rating }).map((_, i) => (
+                            {Array.from({ length: rev.rating || 5 }).map((_, i) => (
                               <Star key={i} className="w-3 h-3 text-amber-500 fill-amber-500" />
                             ))}
                           </div>
@@ -737,7 +752,7 @@ export default function CoursesPage() {
                 <div className="space-y-2">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Available Timings</h4>
                   <div className="flex flex-col gap-2">
-                    {viewingCourse.batchTimings.map((time, idx) => (
+                    {(viewingCourse.batchTimings || []).map((time, idx) => (
                       <div key={idx} className="bg-white border border-slate-200 rounded-xl p-2.5 text-slate-700 font-bold text-xs flex items-center gap-2">
                         <Clock className="w-3.5 h-3.5 text-slate-400" />
                         <span>{time}</span>
@@ -761,7 +776,7 @@ export default function CoursesPage() {
                 <div className="space-y-2.5">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Placement Partnerships</h4>
                   <div className="flex flex-wrap gap-1.5">
-                    {viewingCourse.placementPartners.map((comp, idx) => (
+                    {(viewingCourse.placementPartners || []).map((comp, idx) => (
                       <span key={idx} className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-200/50">
                         {comp}
                       </span>
@@ -780,8 +795,12 @@ export default function CoursesPage() {
       {/* Add Course Modal */}
       <AddCourseModal 
         isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)} 
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingCourse(null);
+        }} 
         onSuccess={fetchData} 
+        courseToEdit={editingCourse}
       />
 
     </div>

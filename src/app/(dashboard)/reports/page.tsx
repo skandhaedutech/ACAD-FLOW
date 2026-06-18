@@ -516,22 +516,26 @@ export default function ReportsPage() {
 
   // Reusable custom dropdown renderer
   const renderFilterDropdown = (
-    label: string, 
     value: string, 
     options: string[], 
     onChange: (val: string) => void, 
     id: string
   ) => {
     const isOpen = activeDropdown === id;
+    const isActiveFilter = !value.startsWith("All");
+
     return (
       <div className="relative">
         <button 
           onClick={() => setActiveDropdown(isOpen ? null : id)}
-          className="flex items-center gap-2 bg-white rounded-xl px-4 py-2.5 border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm"
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 border text-[11.5px] font-bold transition-all shadow-sm ${
+            isActiveFilter 
+              ? 'bg-[#0f5a3e] border-[#0f5a3e] text-white' 
+              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+          }`}
         >
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}:</span>
-          <span className="text-slate-900 font-black">{value}</span>
-          <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+          <span>{value}</span>
+          <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         </button>
         
         {isOpen && (
@@ -660,24 +664,24 @@ export default function ReportsPage() {
       </div>
 
       {/* 2. Filters Toolbar */}
-      <div className="bg-slate-50/80 rounded-[24px] p-4 border border-slate-200/50 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4 print:hidden">
-        <div className="relative flex-1 max-w-sm">
+      <div className="bg-slate-50/80 rounded-[24px] p-4 border border-slate-200/60 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4 print:hidden">
+        <div className="relative w-full xl:max-w-[320px] shrink-0">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             placeholder="Search reports or courses..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 border border-slate-200 outline-none focus:border-slate-400 transition-colors shadow-sm"
+            className="w-full bg-white rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 border border-slate-200 outline-none focus:border-[#0f5a3e] focus:ring-1 focus:ring-[#0f5a3e] transition-colors shadow-sm"
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {renderFilterDropdown("Range", dateRange, ["All Time", "This Month", "Last 30 Days", "Last 90 Days", "This Year"], setDateRange, "range")}
-          {renderFilterDropdown("Course", selectedCourse, ["All Courses", ...uniqueCourses], setSelectedCourse, "course")}
-          {renderFilterDropdown("Counselor", selectedCounselor, ["All Counselors", ...uniqueCounselors], setSelectedCounselor, "counselor")}
-          {renderFilterDropdown("Source", selectedSource, ["All Sources", "Instagram", "Website", "Referral", "Facebook", "WhatsApp"], setSelectedSource, "source")}
-          {renderFilterDropdown("Revenue", selectedRevenueType, ["All Types", "Full Payment", "EMI Installment", "Registration Fee"], setSelectedRevenueType, "revenue")}
+        <div className="flex flex-wrap items-center gap-2">
+          {renderFilterDropdown(dateRange, ["All Time", "This Month", "Last 30 Days", "Last 90 Days", "This Year"], setDateRange, "range")}
+          {renderFilterDropdown(selectedCourse, ["All Courses", ...uniqueCourses], setSelectedCourse, "course")}
+          {renderFilterDropdown(selectedCounselor, ["All Counselors", ...uniqueCounselors], setSelectedCounselor, "counselor")}
+          {renderFilterDropdown(selectedSource, ["All Sources", "Instagram", "Website", "Referral", "Facebook", "WhatsApp"], setSelectedSource, "source")}
+          {renderFilterDropdown(selectedRevenueType, ["All Types", "Full Payment", "EMI Installment", "Registration Fee"], setSelectedRevenueType, "revenue")}
         </div>
       </div>
 

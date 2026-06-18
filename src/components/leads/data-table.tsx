@@ -226,6 +226,8 @@ export function LeadsDataTable() {
     next_followup_time: "One Day"
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getFollowupDueDate = (createdDateStr: string, timeframe: string): Date => {
@@ -415,6 +417,8 @@ export function LeadsDataTable() {
   // Add Lead Action
   const handleAddLead = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const res = await fetch(`${BACKEND_URL}/api/leads`, {
         method: "POST",
@@ -442,13 +446,17 @@ export function LeadsDataTable() {
         message: "Could not connect to the backend server. Please verify your API configurations and make sure the backend is active.",
         type: "error"
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
 
   // Edit Lead Action
   const handleEditLead = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedLead) return;
+    if (!selectedLead || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const res = await fetch(`${BACKEND_URL}/api/leads/${selectedLead.id}`, {
         method: "PUT",
@@ -477,6 +485,8 @@ export function LeadsDataTable() {
         message: "Could not connect to the backend server. Please verify your API configurations and make sure the backend is active.",
         type: "error"
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -976,14 +986,18 @@ export function LeadsDataTable() {
                       {/* Name & Metadata */}
                       <td className="px-5 py-3.5">
                         <div className="flex flex-col">
-                           <div className="font-extrabold text-slate-800 text-sm leading-tight flex items-center gap-1.5">
+                           <button 
+                             onClick={() => openEditModal(lead)}
+                             className="font-extrabold text-slate-800 hover:text-[#0f5a3e] text-sm leading-tight flex items-center gap-1.5 text-left transition-colors cursor-pointer"
+                             title="Click to edit lead"
+                           >
                              {lead.student_name}
                              {lead.gender && (
                                <span className="text-[8px] font-black text-slate-400 border border-slate-200 px-1 py-0.2 rounded uppercase">
                                  {lead.gender.slice(0, 1)}
                                </span>
                              )}
-                           </div>
+                           </button>
                            <div className="text-[10px] text-slate-400 font-bold mt-0.5 flex items-center gap-1.5">
                              <Phone className="w-2.5 h-2.5 opacity-70" /> {lead.phone_number}
                              {lead.city && <span>• {lead.city}</span>}
@@ -1062,7 +1076,7 @@ export function LeadsDataTable() {
                           <select
                             value={lead.counselor_id || ""}
                             onChange={(e) => handleCounselorChange(lead.id, e.target.value)}
-                            className="bg-slate-50 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-2 py-1.5 rounded-lg text-[10px] font-black focus:outline-none cursor-pointer max-w-[125px] truncate mr-1 shadow-sm"
+                            className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-2 py-1.5 rounded-lg text-[10px] font-black focus:outline-none cursor-pointer max-w-[125px] truncate mr-1 shadow-sm"
                             title="Assign counselor to this lead"
                           >
                             <option value="">Unassigned</option>
@@ -1169,14 +1183,13 @@ export function LeadsDataTable() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Student ID */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Student ID {isEditModalOpen ? '' : '(Optional)'}</label>
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Student ID (Optional)</label>
                     <input
                       type="text"
-                      readOnly={isEditModalOpen}
                       value={formInputs.student_id}
-                      onChange={(e) => !isEditModalOpen && setFormInputs({ ...formInputs, student_id: e.target.value })}
-                      placeholder="Auto-generated if left blank"
-                      className={`w-full border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:outline-none ${isEditModalOpen ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-[#0f5a3e] dark:focus:ring-[#d3f46f] text-slate-900 dark:text-slate-100'}`}
+                      onChange={(e) => setFormInputs({ ...formInputs, student_id: e.target.value })}
+                      placeholder="Leave blank to auto-generate or use null"
+                      className="w-full bg-slate-50 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f5a3e] dark:focus:ring-[#d3f46f] text-slate-900"
                     />
                   </div>
 

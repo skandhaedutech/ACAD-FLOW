@@ -8,9 +8,10 @@ interface AddCourseModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  courseToEdit?: any | null;
 }
 
-export function AddCourseModal({ isOpen, onClose, onSuccess }: AddCourseModalProps) {
+export function AddCourseModal({ isOpen, onClose, onSuccess, courseToEdit }: AddCourseModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -23,6 +24,34 @@ export function AddCourseModal({ isOpen, onClose, onSuccess }: AddCourseModalPro
     trainer_name: "",
     admission_status: "Open",
   });
+
+  React.useEffect(() => {
+    if (courseToEdit && isOpen) {
+      setFormData({
+        title: courseToEdit.title || "",
+        category: courseToEdit.category || "AI & Data",
+        duration: courseToEdit.duration || "4 to 6 month",
+        fee: courseToEdit.fee?.toString() || "",
+        max_price: courseToEdit.max_price?.toString() || "",
+        discount: courseToEdit.discount?.toString() || "",
+        mode: courseToEdit.mode || "Online / Offline",
+        trainer_name: courseToEdit.trainerName || courseToEdit.trainer_name || "",
+        admission_status: courseToEdit.admissionStatus || courseToEdit.admission_status || "Open",
+      });
+    } else if (isOpen) {
+      setFormData({
+        title: "",
+        category: "AI & Data",
+        duration: "4 to 6 month",
+        fee: "",
+        max_price: "",
+        discount: "",
+        mode: "Online / Offline",
+        trainer_name: "",
+        admission_status: "Open",
+      });
+    }
+  }, [courseToEdit, isOpen]);
 
   const categories = ["AI & Data", "Web Development", "Digital Marketing", "Finance & Accounting", "Cyber Security", "Enterprise Software", "Design"];
 
@@ -38,13 +67,17 @@ export function AddCourseModal({ isOpen, onClose, onSuccess }: AddCourseModalPro
         discount: parseFloat(formData.discount) || 0,
       };
 
-      const res = await fetch(`${BACKEND_URL}/api/courses`, {
-        method: "POST",
+      const isEdit = !!courseToEdit;
+      const url = isEdit ? `${BACKEND_URL}/api/courses/${courseToEdit.id}` : `${BACKEND_URL}/api/courses`;
+      const method = isEdit ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Failed to add course");
+      if (!res.ok) throw new Error(isEdit ? "Failed to update course" : "Failed to add course");
 
       onSuccess();
       setFormData({
@@ -60,8 +93,8 @@ export function AddCourseModal({ isOpen, onClose, onSuccess }: AddCourseModalPro
       });
       onClose();
     } catch (error) {
-      console.error("Error adding course:", error);
-      alert("Failed to add course. Please try again.");
+      console.error(isEdit ? "Error updating course:" : "Error adding course:", error);
+      alert(isEdit ? "Failed to update course. Please try again." : "Failed to add course. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -86,7 +119,7 @@ export function AddCourseModal({ isOpen, onClose, onSuccess }: AddCourseModalPro
             <div className="bg-[#0f5a3e] p-5 text-white flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-white fill-white/20" />
-                <h3 className="text-base font-black uppercase tracking-wider">Add New Course</h3>
+                <h3 className="text-base font-black uppercase tracking-wider">{courseToEdit ? "Edit Course" : "Add New Course"}</h3>
               </div>
               <button
                 onClick={onClose}
@@ -209,7 +242,7 @@ export function AddCourseModal({ isOpen, onClose, onSuccess }: AddCourseModalPro
                   ) : (
                     <UploadCloud className="w-3.5 h-3.5" />
                   )}
-                  Save Course
+                  {courseToEdit ? "Update Course" : "Save Course"}
                 </button>
               </div>
             </form>

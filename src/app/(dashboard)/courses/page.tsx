@@ -101,9 +101,9 @@ export default function CoursesPage() {
   const fetchData = async () => {
     try {
       const [leadsRes, admissionsRes, coursesRes] = await Promise.all([
-        fetch(`${BACKEND_URL}/api/leads`),
-        fetch(`${BACKEND_URL}/api/admissions`),
-        fetch(`${BACKEND_URL}/api/courses`)
+        fetch(`${BACKEND_URL}/server-api/leads`),
+        fetch(`${BACKEND_URL}/server-api/admissions`),
+        fetch(`${BACKEND_URL}/server-api/courses`)
       ]);
       if (leadsRes.ok) setLeads(await leadsRes.json());
       if (admissionsRes.ok) setAdmissions(await admissionsRes.json());

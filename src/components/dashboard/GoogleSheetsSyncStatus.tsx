@@ -11,7 +11,7 @@ export function GoogleSheetsSyncStatus() {
     setSyncing(true);
     setError(false);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/sync-sheet`, {
+      const res = await fetch(`${BACKEND_URL}/server-api/sync-sheet`, {
         method: "POST",
       });
       if (!res.ok) throw new Error("Sync failed");

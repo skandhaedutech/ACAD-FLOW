@@ -41,7 +41,7 @@ export const Sidebar = () => {
   useEffect(() => {
     const fetchUnreadCount = async () => {
       try {
-        const res = await fetch(`${BACKEND_URL}/api/notifications`);
+        const res = await fetch(`${BACKEND_URL}/server-api/notifications`);
         if (res.ok) {
           const data = await res.json();
           const unread = data.filter((n: any) => !n.is_read && !n.is_resolved).length;

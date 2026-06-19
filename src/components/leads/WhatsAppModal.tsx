@@ -51,7 +51,7 @@ export function WhatsAppModal({ isOpen, onClose, lead }: WhatsAppModalProps) {
   const fetchTemplates = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/whatsapp/templates`);
+      const res = await fetch(`${BACKEND_URL}/server-api/whatsapp/templates`);
       if (res.ok) {
         const data = await res.json();
         setTemplates(data);
@@ -88,7 +88,7 @@ export function WhatsAppModal({ isOpen, onClose, lead }: WhatsAppModalProps) {
     setIsSending(true);
     try {
       // 1. Log activity to backend
-      await fetch(`${BACKEND_URL}/api/whatsapp/activity`, {
+      await fetch(`${BACKEND_URL}/server-api/whatsapp/activity`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

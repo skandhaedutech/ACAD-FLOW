@@ -98,7 +98,7 @@ export function DailyFollowupModal() {
           return; 
         }
 
-        const res = await fetch(`${BACKEND_URL}/api/leads`);
+        const res = await fetch(`${BACKEND_URL}/server-api/leads`);
         if (res.ok) {
           const leads: Lead[] = await res.json();
           const today = new Date();
@@ -159,7 +159,7 @@ export function DailyFollowupModal() {
     
     try {
       // 1. Post to follow-up history
-      const res = await fetch(`${BACKEND_URL}/api/leads/follow-up`, {
+      const res = await fetch(`${BACKEND_URL}/server-api/leads/follow-up`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

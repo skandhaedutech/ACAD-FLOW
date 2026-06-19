@@ -24,7 +24,7 @@ export async function GET() {
     // 2. Ping Hugging Face Backend to prevent it from going to sleep
     let backendStatus = "Skipped or Failed";
     try {
-      const backendRes = await fetch(`${BACKEND_URL}/api/counselors`, { 
+      const backendRes = await fetch(`${BACKEND_URL}/server-api/counselors`, { 
         method: 'GET',
         // Short timeout so Vercel function doesn't hang forever
         signal: AbortSignal.timeout(10000) 

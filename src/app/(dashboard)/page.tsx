@@ -55,9 +55,9 @@ export default function DashboardPage() {
   const fetchData = async () => {
     try {
       const [leadsRes, statsRes, insightsRes] = await Promise.all([
-        fetch(`${BACKEND_URL}/api/leads`),
-        fetch(`${BACKEND_URL}/api/stats`),
-        fetch(`${BACKEND_URL}/api/insights`)
+        fetch(`${BACKEND_URL}/server-api/leads`),
+        fetch(`${BACKEND_URL}/server-api/stats`),
+        fetch(`${BACKEND_URL}/server-api/insights`)
       ]);
 
       if (leadsRes.ok) setLeads(await leadsRes.json());
@@ -126,7 +126,7 @@ export default function DashboardPage() {
     };
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/update-lead`, {
+      const res = await fetch(`${BACKEND_URL}/server-api/update-lead`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

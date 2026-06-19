@@ -29,7 +29,7 @@ export default function NotificationsPage() {
   // Fetch notifications list
   const fetchNotifications = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/notifications`);
+      const res = await fetch(`${BACKEND_URL}/server-api/notifications`);
       if (res.ok) {
         const data = await res.json();
         setNotifications(data);
@@ -65,7 +65,7 @@ export default function NotificationsPage() {
   // Action methods
   const handleMarkAsRead = async (id: string) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/notifications/${id}/read`, {
+      const res = await fetch(`${BACKEND_URL}/server-api/notifications/${id}/read`, {
         method: "PUT"
       });
       if (res.ok) {
@@ -80,7 +80,7 @@ export default function NotificationsPage() {
 
   const handleResolve = async (id: string) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/notifications/${id}/resolve`, {
+      const res = await fetch(`${BACKEND_URL}/server-api/notifications/${id}/resolve`, {
         method: "PUT"
       });
       if (res.ok) {
@@ -106,7 +106,7 @@ export default function NotificationsPage() {
       // Try bulk endpoint first
       let bulkSuccess = false;
       try {
-        const res = await fetch(`${BACKEND_URL}/api/notifications/mark-all-read`, {
+        const res = await fetch(`${BACKEND_URL}/server-api/notifications/mark-all-read`, {
           method: "POST" // or PUT depending on backend
         });
         if (res.ok) bulkSuccess = true;
@@ -118,7 +118,7 @@ export default function NotificationsPage() {
       if (!bulkSuccess) {
         for (const n of unreadNotifs) {
           try {
-            await fetch(`${BACKEND_URL}/api/notifications/${n.id}/read`, {
+            await fetch(`${BACKEND_URL}/server-api/notifications/${n.id}/read`, {
               method: "PUT"
             });
           } catch (e) {

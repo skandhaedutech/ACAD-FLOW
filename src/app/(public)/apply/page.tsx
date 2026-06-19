@@ -42,7 +42,7 @@ export default function ApplyPage() {
     setError("");
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/public/leads`, {
+      const response = await fetch(`${BACKEND_URL}/server-api/public/leads`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

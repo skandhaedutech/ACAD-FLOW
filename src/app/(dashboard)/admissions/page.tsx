@@ -96,7 +96,7 @@ export default function AdmissionsPage() {
   // Fetch admissions
   const fetchAdmissions = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admissions?t=${Date.now()}`);
+      const res = await fetch(`${BACKEND_URL}/server-api/admissions?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         setAdmissions(data);
@@ -196,7 +196,7 @@ export default function AdmissionsPage() {
     setSuccessMessage("");
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admissions`, {
+      const res = await fetch(`${BACKEND_URL}/server-api/admissions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formState)
@@ -254,7 +254,7 @@ export default function AdmissionsPage() {
   // Mark Payment as Paid
   const handleMarkPaymentPaid = async (studentId: string) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admissions/${studentId}/pay`, {
+      const res = await fetch(`${BACKEND_URL}/server-api/admissions/${studentId}/pay`, {
         method: "PUT"
       });
       if (res.ok) {

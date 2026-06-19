@@ -122,7 +122,7 @@ export default function AIInsightsPage() {
   const fetchInsights = async (triggerLoader = false) => {
     if (triggerLoader) setIsProcessing(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/ai-insights`);
+      const res = await fetch(`${BACKEND_URL}/server-api/ai-insights`);
       if (res.ok) {
         const payload = await res.json();
         setData(payload);

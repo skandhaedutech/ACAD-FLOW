@@ -69,9 +69,9 @@ export default function ReportsPage() {
   const fetchData = async () => {
     try {
       const [leadsRes, admissionsRes, statsRes] = await Promise.all([
-        fetch(`${BACKEND_URL}/api/leads`),
-        fetch(`${BACKEND_URL}/api/admissions`),
-        fetch(`${BACKEND_URL}/api/stats`)
+        fetch(`${BACKEND_URL}/server-api/leads`),
+        fetch(`${BACKEND_URL}/server-api/admissions`),
+        fetch(`${BACKEND_URL}/server-api/stats`)
       ]);
 
       if (leadsRes.ok) setLeads(await leadsRes.json());

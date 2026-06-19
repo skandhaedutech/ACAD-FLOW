@@ -55,7 +55,7 @@ export default function CounselorsPage() {
 
   const fetchCounselors = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/counselors`);
+      const res = await fetch(`${BACKEND_URL}/server-api/counselors`);
       if (res.ok) {
         const data = await res.json();
         setCounselors(data);
@@ -91,7 +91,7 @@ export default function CounselorsPage() {
     setFormError("");
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/counselors`, {
+      const res = await fetch(`${BACKEND_URL}/server-api/counselors`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formInputs)
@@ -120,7 +120,7 @@ export default function CounselorsPage() {
     setFormError("");
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/counselors/${selectedCounselor.id}`, {
+      const res = await fetch(`${BACKEND_URL}/server-api/counselors/${selectedCounselor.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formInputs)
@@ -151,7 +151,7 @@ export default function CounselorsPage() {
       message: `Are you sure you want to remove ${name}? They will lose access to the dashboard immediately.`,
       onConfirm: async () => {
         try {
-          const res = await fetch(`${BACKEND_URL}/api/counselors/${id}`, {
+          const res = await fetch(`${BACKEND_URL}/server-api/counselors/${id}`, {
             method: "DELETE"
           });
           if (res.ok) {

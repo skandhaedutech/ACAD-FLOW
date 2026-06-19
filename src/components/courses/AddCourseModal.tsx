@@ -68,7 +68,7 @@ export function AddCourseModal({ isOpen, onClose, onSuccess, courseToEdit }: Add
         discount: parseFloat(formData.discount) || 0,
       };
 
-      const url = isEdit ? `${BACKEND_URL}/api/courses/${courseToEdit.id}` : `${BACKEND_URL}/api/courses`;
+      const url = isEdit ? `${BACKEND_URL}/server-api/courses/${courseToEdit.id}` : `${BACKEND_URL}/server-api/courses`;
       const method = isEdit ? "PUT" : "POST";
 
       const res = await fetch(url, {

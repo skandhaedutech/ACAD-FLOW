@@ -268,7 +268,7 @@ export function LeadsDataTable() {
 
   const fetchLeads = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/leads?t=${Date.now()}`);
+      const res = await fetch(`${BACKEND_URL}/server-api/leads?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         setLeads(data);
@@ -282,7 +282,7 @@ export function LeadsDataTable() {
 
   const fetchCounselors = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/counselors`);
+      const res = await fetch(`${BACKEND_URL}/server-api/counselors`);
       if (res.ok) {
         const data = await res.json();
         setCounselors(data);
@@ -295,7 +295,7 @@ export function LeadsDataTable() {
   const fetchTimeline = async (leadId: string) => {
     setIsTimelineLoading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/leads/${leadId}/timeline`);
+      const res = await fetch(`${BACKEND_URL}/server-api/leads/${leadId}/timeline`);
       if (res.ok) {
         const data = await res.json();
         setTimelineEvents(data);
@@ -339,7 +339,7 @@ export function LeadsDataTable() {
   const handleManualSync = async () => {
     setIsSyncing(true);
     try {
-      await fetch(`${BACKEND_URL}/api/sync-sheet`, { method: "POST" });
+      await fetch(`${BACKEND_URL}/server-api/sync-sheet`, { method: "POST" });
       await fetchLeads();
     } catch (error) {
       console.error("Manual sync failed", error);
@@ -375,7 +375,7 @@ export function LeadsDataTable() {
     };
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/update-lead`, {
+      const res = await fetch(`${BACKEND_URL}/server-api/update-lead`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -402,7 +402,7 @@ export function LeadsDataTable() {
     );
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/leads/${leadId}`, {
+      const res = await fetch(`${BACKEND_URL}/server-api/leads/${leadId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ counselor_id: counselorId || null }),
@@ -420,7 +420,7 @@ export function LeadsDataTable() {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/leads`, {
+      const res = await fetch(`${BACKEND_URL}/server-api/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formInputs)
@@ -458,7 +458,7 @@ export function LeadsDataTable() {
     if (!selectedLead || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/leads/${selectedLead.id}`, {
+      const res = await fetch(`${BACKEND_URL}/server-api/leads/${selectedLead.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formInputs)
@@ -501,7 +501,7 @@ export function LeadsDataTable() {
       type: 'danger',
       onConfirm: async () => {
         try {
-          const res = await fetch(`${BACKEND_URL}/api/leads/${id}`, {
+          const res = await fetch(`${BACKEND_URL}/server-api/leads/${id}`, {
             method: "DELETE"
           });
           if (res.ok) {
@@ -520,7 +520,7 @@ export function LeadsDataTable() {
     e.preventDefault();
     if (!selectedLead) return;
     try {
-      const res = await fetch(`${BACKEND_URL}/api/leads/follow-up`, {
+      const res = await fetch(`${BACKEND_URL}/server-api/leads/follow-up`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -706,7 +706,7 @@ export function LeadsDataTable() {
           };
 
           // Post to database directly
-          await fetch(`${BACKEND_URL}/api/leads`, {
+          await fetch(`${BACKEND_URL}/server-api/leads`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(newLead)

@@ -443,7 +443,7 @@ export function LeadsDataTable() {
       setAlertDialog({
         isOpen: true,
         title: "Failed to Save Lead",
-        message: "Could not connect to the backend server. Please verify your API configurations and make sure the backend is active.",
+        message: `Network Error: ${error?.message || error}. Please ensure the backend is active. URL: ${BACKEND_URL}/server-api/leads`,
         type: "error"
       });
     } finally {

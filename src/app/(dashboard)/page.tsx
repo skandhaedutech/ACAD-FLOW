@@ -62,7 +62,27 @@ export default function DashboardPage() {
 
       if (leadsRes.ok) setLeads(await leadsRes.json());
       if (statsRes.ok) setStats(await statsRes.json());
-      if (insightsRes.ok) setInsights(await insightsRes.json());
+      if (insightsRes.ok) {
+        const insightsData = await insightsRes.json();
+        if (Array.isArray(insightsData)) {
+          setInsights(insightsData);
+        } else if (insightsData && typeof insightsData === 'object') {
+          // Convert the massive AI object into the Insight[] array expected by the UI
+          const adaptedInsights: Insight[] = [];
+          if (insightsData.personalRecommendation?.message) {
+            adaptedInsights.push({ type: 'positive', icon: 'TrendingUp', title: 'Action Item', desc: insightsData.personalRecommendation.message });
+          }
+          if (Array.isArray(insightsData.smartRecommendations)) {
+            insightsData.smartRecommendations.forEach((rec: string, i: number) => {
+              adaptedInsights.push({ type: i === 0 ? 'positive' : 'info', icon: 'Sparkles', title: `Recommendation ${i + 1}`, desc: rec });
+            });
+          }
+          if (insightsData.executiveSummary) {
+            adaptedInsights.push({ type: 'info', icon: 'Zap', title: 'Summary', desc: insightsData.executiveSummary });
+          }
+          setInsights(adaptedInsights);
+        }
+      }
     } catch (error) {
       console.warn("Failed to fetch dashboard data:", error);
     } finally {

@@ -1,0 +1,31 @@
+{"level":"info","message":"📥 Subscribe: \"lead.converted\"","service":"acadflow-api","timestamp":"2026-05-27 14:00:38.542","version":"2.0.0"}
+{"level":"info","message":"📥 Subscribe: \"lead.status_changed\"","service":"acadflow-api","timestamp":"2026-05-27 14:00:38.546","version":"2.0.0"}
+{"level":"info","message":"📥 Subscribe: \"manual_admission.completed\"","service":"acadflow-api","timestamp":"2026-05-27 14:00:38.548","version":"2.0.0"}
+{"level":"info","message":"📥 Subscribe: \"payment.completed\"","service":"acadflow-api","timestamp":"2026-05-27 14:00:38.548","version":"2.0.0"}
+{"level":"info","message":"📥 Subscribe: \"lead.status_changed\"","service":"acadflow-api","timestamp":"2026-05-27 14:00:38.548","version":"2.0.0"}
+{"level":"info","message":"Production API Gateway running on port 5000","service":"acadflow-api","timestamp":"2026-05-27 14:00:38.551","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:01:00.017","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:01:30.020","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:02:00.024","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:02:30.014","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:03:00.028","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:03:30.019","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:04:00.025","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:04:30.022","version":"2.0.0"}
+{"correlationId":"13ddee01-ea2e-46ea-addb-3ac663e75eb5","durationMs":3,"ip":"::1","level":"warn","message":"GET / 404 3ms","method":"GET","service":"acadflow-api","status":404,"timestamp":"2026-05-27 14:04:39.900","url":"/","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:05:00.017","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:05:30.015","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:06:00.041","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:06:30.017","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:07:00.032","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:07:30.020","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:08:00.031","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:08:30.029","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:09:00.025","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:09:30.012","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:10:00.017","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:10:30.026","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:11:00.024","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:11:30.027","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:12:00.025","version":"2.0.0"}
+{"level":"info","message":"Cron: Running scheduled Google Sheets sync","service":"acadflow-api","timestamp":"2026-05-27 14:12:30.026","version":"2.0.0"}

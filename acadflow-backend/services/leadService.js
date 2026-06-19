@@ -185,7 +185,7 @@ router.post('/', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error creating lead:', error, JSON.stringify(error));
     if (error && error.code === '23505') {
-      return res.status(409).json({ error: 'A lead with this phone number already exists in your organization.' });
+      return res.status(409).json({ error: `A lead with this phone number already exists in your organization. Details: ${error.message || ''} | ${error.details || ''}` });
     }
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -291,7 +291,7 @@ router.put('/update-lead', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error updating lead:', error);
     if (error && error.code === '23505') {
-      return res.status(409).json({ error: 'A lead with this phone number already exists in your organization.' });
+      return res.status(409).json({ error: `A lead with this phone number already exists in your organization. Details: ${error.message || ''} | ${error.details || ''}` });
     }
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -403,7 +403,7 @@ router.put('/:id', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error updating lead:', error);
     if (error && error.code === '23505') {
-      return res.status(409).json({ error: 'A lead with this phone number already exists in your organization.' });
+      return res.status(409).json({ error: `A lead with this phone number already exists in your organization. Details: ${error.message || ''} | ${error.details || ''}` });
     }
     res.status(500).json({ error: 'Internal Server Error' });
   }

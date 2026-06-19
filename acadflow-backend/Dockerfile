@@ -9,8 +9,8 @@ RUN npm ci --only=production
 # Copy application files
 COPY . .
 
-# Set default port to 5000
-ENV PORT=5000
-EXPOSE 5000
+# Set default port to 7860
+ENV PORT=7860
+EXPOSE 7860
 
 CMD ["node", "server.js"]

@@ -23,25 +23,27 @@ const { router: notificationRouter, initNotificationService } = require('./servi
 // Initialize decoupled event subscribers for database auditing and real-time triggers
 initNotificationService();
 
-// Legacy compatibility route rewrite for /api/update-lead
-app.put('/api/update-lead', (req, res, next) => {
+// Legacy compatibility route rewrite for /api/update-lead and /server-api/update-lead
+app.put(['/api/update-lead', '/server-api/update-lead'], (req, res, next) => {
   req.url = '/update-lead';
   leadRouter(req, res, next);
 });
 
-// Mount Scoped API Sub-routers
-app.use('/api/leads', leadRouter);
-app.use('/api/admissions', admissionRouter);
-app.use('/api/ai-insights', aiRouter);
-app.use('/api/insights', aiRouter);
-app.use('/api/notifications', notificationRouter);
-app.use('/api/counselors', counselorRouter);
-app.use('/api/public', publicRouter);
-app.use('/api/whatsapp', whatsappRouter);
-app.use('/api/courses', courseRouter);
+// Mount Scoped API Sub-routers on both /api and /server-api
+['/api', '/server-api'].forEach(prefix => {
+  app.use(`${prefix}/leads`, leadRouter);
+  app.use(`${prefix}/admissions`, admissionRouter);
+  app.use(`${prefix}/ai-insights`, aiRouter);
+  app.use(`${prefix}/insights`, aiRouter);
+  app.use(`${prefix}/notifications`, notificationRouter);
+  app.use(`${prefix}/counselors`, counselorRouter);
+  app.use(`${prefix}/public`, publicRouter);
+  app.use(`${prefix}/whatsapp`, whatsappRouter);
+  app.use(`${prefix}/courses`, courseRouter);
+});
 
-// GET /api/stats - Dashboard KPI metrics scoped strictly by active organization
-app.get('/api/stats', requireAuth, async (req, res) => {
+// GET /api/stats and /server-api/stats - Dashboard KPI metrics scoped strictly by active organization
+app.get(['/api/stats', '/server-api/stats'], requireAuth, async (req, res) => {
   try {
     const db = getTenantDb(req);
     
@@ -122,8 +124,8 @@ app.get('/api/stats', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/sync-sheet - Keep sync endpoint strictly for manual importing if requested
-app.post('/api/sync-sheet', requireAuth, async (req, res) => {
+// POST /api/sync-sheet and /server-api/sync-sheet - Keep sync endpoint strictly for manual importing if requested
+app.post(['/api/sync-sheet', '/server-api/sync-sheet'], requireAuth, async (req, res) => {
   try {
     const { syncSheetsToDB } = require('./services/googleSheets');
     await syncSheetsToDB(null);

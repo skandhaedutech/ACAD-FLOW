@@ -25,8 +25,7 @@ function LoginContent() {
     try {
       const result = await login(username, password);
       if (result.success) {
-        router.push("/");
-        router.refresh();
+        window.location.href = "/";
       } else {
         setError(result.error || "Authentication failed");
         setIsLoading(false);

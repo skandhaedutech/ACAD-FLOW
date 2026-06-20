@@ -5,10 +5,40 @@ require('dotenv').config();
 const { requireAuth, getTenantDb } = require('./services/auth');
 const dbAdmin = require('./db');
 
+// --- 🛡️ Global Crash Protection (10-Year Uptime Shield) ---
+process.on('uncaughtException', (err) => {
+  console.error('CRITICAL [Uncaught Exception]:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('CRITICAL [Unhandled Rejection]:', reason);
+});
+// -------------------------------------------------------------
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Health check endpoint with environmental diagnostics
+app.get('/', (req, res) => {
+  const dbModule = require('./db');
+  res.status(200).json({
+    status: 'Healthy',
+    timestamp: new Date().toISOString(),
+    nodeVersion: process.version,
+    port: process.env.PORT || 7860,
+    diagnostics: {
+      SUPABASE_URL_EXISTS: !!process.env.SUPABASE_URL,
+      SUPABASE_KEY_EXISTS: !!process.env.SUPABASE_KEY,
+      SUPABASE_DB_URL_EXISTS: !!process.env.SUPABASE_DB_URL,
+      SPREADSHEET_ID_EXISTS: !!process.env.SPREADSHEET_ID,
+      GOOGLE_CREDS_JSON_EXISTS: !!process.env.GOOGLE_CREDS_JSON,
+      NVIDIA_API_KEY_EXISTS: !!process.env.NVIDIA_API_KEY
+    },
+    databaseInitializationError: dbModule.dbError || null
+  });
+});
 
 // --- Modular Routing Blocks ---
 const leadRouter = require('./services/leadService');
@@ -136,7 +166,14 @@ app.post(['/api/sync-sheet', '/server-api/sync-sheet'], requireAuth, async (req,
   }
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+// --- 🛡️ Global Express Error Handler ---
+app.use((err, req, res, next) => {
+  console.error('Express Pipeline Error:', err);
+  res.status(500).json({ error: 'Internal Server Error (Caught by Global Handler)' });
+});
+// -----------------------------------------
+
+const PORT = process.env.PORT || 7860;
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Production API Gateway running on port ${PORT}`);
 });

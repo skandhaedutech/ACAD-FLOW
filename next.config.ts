@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   devIndicators: false,
   async rewrites() {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://skandaedutech-acadflowbackend.hf.space';
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://acadflow-backend-vrg7.onrender.com';
     return [
       {
         source: '/server-api/:path*',

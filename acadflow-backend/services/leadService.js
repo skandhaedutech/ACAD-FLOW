@@ -191,12 +191,10 @@ router.post('/', requireAuth, async (req, res) => {
     res.status(201).json({ message: 'Lead created successfully', lead: createdLead });
   } catch (error) {
     console.error('Error creating lead:', error, JSON.stringify(error));
-    if (error && (error.code === '23505' || error.message?.includes('unique constraint') || error.details?.includes('already exists'))) {
-      return res.status(409).json({ error: `A lead with this phone number already exists in your organization.` });
-    }
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal Server Error'
+      error: error.message || 'Internal Server Error',
+      details: error.details || null
     });
   }
 });
@@ -300,12 +298,10 @@ router.put('/update-lead', requireAuth, async (req, res) => {
     res.json({ message: 'Lead updated successfully' });
   } catch (error) {
     console.error('Error updating lead:', error);
-    if (error && (error.code === '23505' || error.message?.includes('unique constraint') || error.details?.includes('already exists'))) {
-      return res.status(409).json({ error: `A lead with this phone number already exists in your organization.` });
-    }
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal Server Error'
+      error: error.message || 'Internal Server Error',
+      details: error.details || null
     });
   }
 });
@@ -415,12 +411,10 @@ router.put('/:id', requireAuth, async (req, res) => {
     res.json({ message: 'Lead updated successfully' });
   } catch (error) {
     console.error('Error updating lead:', error);
-    if (error && (error.code === '23505' || error.message?.includes('unique constraint') || error.details?.includes('already exists'))) {
-      return res.status(409).json({ error: `A lead with this phone number already exists in your organization.` });
-    }
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal Server Error'
+      error: error.message || 'Internal Server Error',
+      details: error.details || null
     });
   }
 });

@@ -117,6 +117,7 @@ router.post('/', requireAuth, async (req, res) => {
       .select('id')
       .eq('organization_id', orgId)
       .eq('phone', phone_number)
+      .is('deleted_at', null)
       .maybeSingle();
 
     console.log('Duplicate Query Result:', existingLead);

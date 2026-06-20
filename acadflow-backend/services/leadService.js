@@ -112,24 +112,7 @@ router.post('/', requireAuth, async (req, res) => {
     console.log('Phone Number Received:', phone_number);
     console.log('Organization ID Received:', orgId);
 
-    const { data: existingLead, error: duplicateCheckError } = await db
-      .from('leads')
-      .select('id')
-      .eq('organization_id', orgId)
-      .eq('phone', phone_number)
-      .is('deleted_at', null)
-      .maybeSingle();
-
-    console.log('Duplicate Query Result:', existingLead);
-    if (duplicateCheckError) {
-      console.log('Supabase duplicate check error:', duplicateCheckError);
-    }
-
-    if (existingLead) {
-      return res.status(409).json({
-        error: 'Duplicate lead found'
-      });
-    }
+    // No duplicate checking logic per user request
 
     // Do not auto-generate student ID. Let counselor add it, otherwise null.
     const nextId = student_id || null;

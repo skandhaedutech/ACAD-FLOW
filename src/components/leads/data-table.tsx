@@ -97,6 +97,8 @@ const STATUSES = [
 export function LeadsDataTable() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [counselors, setCounselors] = useState<Counselor[]>([]);
+  const [dbCourses, setDbCourses] = useState<string[]>([]);
+  const activeCourses = Array.from(new Set(dbCourses.length > 0 ? dbCourses : COURSES));
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -208,7 +210,7 @@ export function LeadsDataTable() {
     student_name: "",
     phone_number: "",
     email: "",
-    interested_course: COURSES[0],
+    interested_course: activeCourses[0] || COURSES[0],
     lead_source: SOURCES[0],
     counselor_id: "",
     followup_status: "Pending",
@@ -294,6 +296,19 @@ export function LeadsDataTable() {
     }
   };
 
+  const fetchCourses = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/server-api/courses`);
+      if (res.ok) {
+        const data = await res.json();
+        const courseNames = data.map((c: any) => c.title);
+        setDbCourses(courseNames);
+      }
+    } catch (error) {
+      console.error("Failed to fetch courses:", error);
+    }
+  };
+
   const fetchTimeline = async (leadId: string) => {
     setIsTimelineLoading(true);
     try {
@@ -319,6 +334,7 @@ export function LeadsDataTable() {
     }
     fetchLeads();
     fetchCounselors();
+    fetchCourses();
 
     // 🔗 Supabase Realtime Synchronization Channel
     const leadsChannel = supabase
@@ -329,6 +345,14 @@ export function LeadsDataTable() {
         (payload) => {
           console.log('[SupabaseRealtime] Lead table change detected:', payload);
           fetchLeads();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'courses' },
+        (payload) => {
+          console.log('[SupabaseRealtime] Courses table change detected:', payload);
+          fetchCourses();
         }
       )
       .subscribe();
@@ -551,7 +575,7 @@ export function LeadsDataTable() {
       student_name: "",
       phone_number: "",
       email: "",
-      interested_course: COURSES[0],
+      interested_course: activeCourses[0] || COURSES[0],
       lead_source: SOURCES[0],
       counselor_id: "",
       followup_status: "Pending",
@@ -571,7 +595,7 @@ export function LeadsDataTable() {
       student_name: lead.student_name,
       phone_number: lead.phone_number,
       email: lead.email || "",
-      interested_course: lead.interested_course || COURSES[0],
+      interested_course: lead.interested_course || activeCourses[0] || COURSES[0],
       lead_source: lead.lead_source || SOURCES[0],
       counselor_id: lead.counselor_id || "",
       followup_status: lead.followup_status,
@@ -681,7 +705,7 @@ export function LeadsDataTable() {
           const student_name = values[0];
           const phone_number = values[1];
           const email = values[2] || "";
-          const interested_course = values[3] || COURSES[0];
+          const interested_course = values[3] || activeCourses[0] || COURSES[0];
           const lead_source = values[4] || SOURCES[0];
           const counselor_name = values[5] || "";
           const followup_status = values[6] || "Pending";
@@ -879,7 +903,7 @@ export function LeadsDataTable() {
               className="w-full bg-transparent text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
             >
               <option value="all">All Courses</option>
-              {COURSES.map(course => <option key={course} value={course}>{course}</option>)}
+              {activeCourses.map(course => <option key={course} value={course}>{course}</option>)}
             </select>
           </div>
 
@@ -1246,7 +1270,7 @@ export function LeadsDataTable() {
                       onChange={(e) => setFormInputs({ ...formInputs, interested_course: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f5a3e] dark:focus:ring-[#d3f46f] text-slate-900"
                     >
-                      {COURSES.map(course => <option key={course} value={course}>{course}</option>)}
+                      {activeCourses.map(course => <option key={course} value={course}>{course}</option>)}
                     </select>
                   </div>
 

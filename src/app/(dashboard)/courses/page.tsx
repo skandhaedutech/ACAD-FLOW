@@ -9,7 +9,7 @@ import {
   BookOpen, Search, Plus, ChevronDown, Check, GraduationCap, Clock, 
   DollarSign, Activity, Award, Sparkles, CheckCircle2, TrendingUp, 
   ChevronRight, X, Briefcase, Star, User, Percent, ShieldAlert, RefreshCw,
-  Users
+  Users, Trash2
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
@@ -112,6 +112,24 @@ export default function CoursesPage() {
       console.warn("Failed to load catalog stats:", err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteCourse = async (courseId: string) => {
+    if (!window.confirm("Are you sure you want to delete this course?")) return;
+    
+    try {
+      const res = await fetch(`${BACKEND_URL}/server-api/courses/${courseId}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        fetchData(); // Reload courses
+      } else {
+        alert("Failed to delete course.");
+      }
+    } catch (error) {
+      console.error("Failed to delete course:", error);
+      alert("Error deleting course.");
     }
   };
 
@@ -434,6 +452,13 @@ export default function CoursesPage() {
                   </div>
 
                   <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleDeleteCourse(course.id)}
+                      className="flex-[0.5] py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-500 text-xs font-black shadow-sm transition-all flex items-center justify-center"
+                      title="Delete Course"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                     <button
                       onClick={() => {
                         setEditingCourse(course);

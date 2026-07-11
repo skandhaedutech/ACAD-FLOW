@@ -811,8 +811,11 @@ export default function AdmissionsPage() {
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Student ID</label>
                 <input 
-                  type="text" name="student_id" value={formState.student_id} onChange={handleFormChange} placeholder="Auto-generated if left blank"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
+                  type="text" 
+                  name="student_id" 
+                  value="Auto-generated" 
+                  disabled
+                  className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-450 cursor-not-allowed"
                 />
               </div>
               <div>

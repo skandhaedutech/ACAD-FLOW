@@ -39,7 +39,7 @@ export async function login(username: string, password: string) {
   try {
     const baseUrl = process.env.NODE_ENV === 'development' 
       ? 'http://127.0.0.1:5000' 
-      : 'https://skandaedutech-acadflowbackend.hf.space';
+      : 'https://acadflow-backend-vrg7.onrender.com';
       
     const res = await fetch(`${baseUrl}/server-api/counselors/login`, {
       method: "POST",

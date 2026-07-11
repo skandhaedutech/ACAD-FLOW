@@ -3,6 +3,7 @@ const router = express.Router();
 const { getTenantDb, requireAuth } = require('./auth');
 const eventBus = require('./eventBus');
 const { appendLeadToSheet, updateLeadInSheet } = require('./googleSheets');
+const { generateNextStudentId } = require('./idGenerator');
 
 // 1. GET /api/leads - Fetch active leads scoped by tenant organization
 router.get('/', requireAuth, async (req, res) => {
@@ -130,8 +131,8 @@ router.post('/', requireAuth, async (req, res) => {
       });
     }
 
-    // Do not auto-generate student ID. Let counselor add it, otherwise null.
-    const nextId = student_id || null;
+    // Auto-generate student ID if not provided
+    const nextId = student_id || await generateNextStudentId();
 
     const newLead = {
       name: student_name,

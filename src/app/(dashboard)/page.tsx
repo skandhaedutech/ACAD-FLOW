@@ -62,7 +62,27 @@ export default function DashboardPage() {
 
       if (leadsRes.ok) setLeads(await leadsRes.json());
       if (statsRes.ok) setStats(await statsRes.json());
-      if (insightsRes.ok) setInsights(await insightsRes.json());
+      if (insightsRes.ok) {
+        const insightsData = await insightsRes.json();
+        // Handle both array format and full AI object format from backend
+        if (Array.isArray(insightsData)) {
+          setInsights(insightsData);
+        } else if (insightsData && insightsData.widgets) {
+          // Convert full AI insights object into dashboard-friendly array
+          const w = insightsData.widgets;
+          const converted: Insight[] = [];
+          if (w.admissionIntelligence) {
+            converted.push({ type: 'positive', icon: 'TrendingUp', title: 'Admission Intelligence', desc: `${w.admissionIntelligence.growth}. ${w.admissionIntelligence.probabilityDesc}` });
+          }
+          if (w.revenueForecasting) {
+            converted.push({ type: 'positive', icon: 'DollarSign', title: 'Revenue Forecasting', desc: `${w.revenueForecasting.expectedRevenue}. ${w.revenueForecasting.expectedEmiThisWeek}` });
+          }
+          if (w.riskDetection) {
+            converted.push({ type: 'warning', icon: 'AlertCircle', title: 'Risk Detection', desc: `${w.riskDetection.dropRiskCount} students at drop risk. ${w.riskDetection.overloadAlert}` });
+          }
+          setInsights(converted.length > 0 ? converted : []);
+        }
+      }
     } catch (error) {
       console.warn("Failed to fetch dashboard data:", error);
     } finally {

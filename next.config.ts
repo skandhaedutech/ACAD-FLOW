@@ -7,7 +7,9 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/server-api/:path*',
-        destination: 'https://skandaedutech-acadflowbackend.hf.space/server-api/:path*',
+        destination: process.env.NODE_ENV === 'development' 
+          ? 'http://127.0.0.1:5000/server-api/:path*' 
+          : 'https://skandaedutech-acadflowbackend.hf.space/server-api/:path*',
       },
     ];
   },

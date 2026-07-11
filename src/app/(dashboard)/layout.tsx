@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { DailyFollowupModal } from "@/components/leads/DailyFollowupModal";
+import { AssignedLeadsPopup } from "@/components/layout/AssignedLeadsPopup";
 
 export default function DashboardLayout({
   children,
@@ -17,6 +18,7 @@ export default function DashboardLayout({
         </main>
       </div>
       <DailyFollowupModal />
+      <AssignedLeadsPopup />
     </div>
   );
 }

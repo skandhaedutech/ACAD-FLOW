@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Calendar, Phone, CheckCircle2, ChevronRight, User, Clock } from "lucide-react";
+import { X, Calendar, AlertCircle, Clock, CalendarDays, CheckCircle2 } from "lucide-react";
 import { BACKEND_URL } from "@/lib/config";
-import { PremiumSelect } from "@/components/ui/PremiumSelect";
+import { getUserRole, getUser } from "@/app/login/actions";
 
 interface Lead {
   id: string;
@@ -16,25 +16,6 @@ interface Lead {
   created_date: string;
   counselor_name: string;
 }
-
-const FOLLOWUP_TIMEFRAMES = [
-  "One Day",
-  "Two Days",
-  "Three days",
-  "Within a Week",
-  "Within a Month",
-  "Today",
-  "Immediate"
-];
-
-const STATUSES = [
-  "Pending",
-  "Interested",
-  "Not Interested",
-  "Call Not Connected",
-  "Done",
-  "Converted"
-];
 
 const getFollowupDueDate = (createdDateStr: string, timeframe: string): Date => {
   const date = new Date(createdDateStr);
@@ -66,75 +47,88 @@ const getFollowupDueDate = (createdDateStr: string, timeframe: string): Date => 
   return date;
 };
 
-import { getUser } from "@/app/login/actions";
+type CategorizedLeads = {
+  overdue: Lead[];
+  today: Lead[];
+  upcoming: Lead[];
+  pending: Lead[]; // Pending but not fitting others explicitly
+};
 
 export function DailyFollowupModal() {
   const [isOpen, setIsOpen] = useState(false);
-  const [overdueLeads, setOverdueLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [username, setUsername] = useState<string>("");
-
-  // Forms state for each lead
-  const [followupForms, setFollowupForms] = useState<Record<string, any>>({});
-  const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<keyof CategorizedLeads>('today');
+  const [leads, setLeads] = useState<CategorizedLeads>({
+    overdue: [],
+    today: [],
+    upcoming: [],
+    pending: []
+  });
 
   useEffect(() => {
-    // Only run on client side
     if (typeof window === "undefined") return;
 
     const initializeModal = async () => {
       try {
-        const user = await getUser();
-        const currentUsername = user || "unknown";
-        setUsername(currentUsername);
-
-        const todayDateStr = new Date().toDateString();
-        const storageKey = `lastFollowupModalDate_${currentUsername}`;
-        const lastShownDate = localStorage.getItem(storageKey);
-
-        // We only pop up once per day per user automatically.
-        if (lastShownDate === todayDateStr) {
+        const role = await getUserRole();
+        if (role !== "Admin" && role !== "Super Admin") {
           setIsLoading(false);
-          return; 
+          return;
+        }
+
+        const username = await getUser();
+        const sessionKey = `followupModalShown_${username}`;
+        
+        if (sessionStorage.getItem(sessionKey) === 'true') {
+          setIsLoading(false);
+          return;
         }
 
         const res = await fetch(`${BACKEND_URL}/server-api/leads`);
         if (res.ok) {
-          const leads: Lead[] = await res.json();
+          const allLeads: Lead[] = await res.json();
           const today = new Date();
-          
-          // Find all leads that are pending and due today or overdue
-          const pendingOverdue = leads.filter(lead => {
-            if (lead.followup_status !== "Pending") return false;
+          today.setHours(0, 0, 0, 0);
+
+          const categorized: CategorizedLeads = {
+            overdue: [],
+            today: [],
+            upcoming: [],
+            pending: []
+          };
+
+          allLeads.forEach(lead => {
+            if (lead.followup_status === "Converted" || lead.followup_status === "Not Interested" || lead.followup_status === "Done") {
+              return;
+            }
+            
             const dueDate = getFollowupDueDate(lead.created_date, lead.followup_time || "One Day");
-            // Set both to midnight for accurate day comparison
             dueDate.setHours(0, 0, 0, 0);
-            today.setHours(0, 0, 0, 0);
-            return dueDate <= today;
+            const timeDiff = dueDate.getTime() - today.getTime();
+
+            if (lead.followup_status === "Pending" || lead.followup_status === "Call Not Connected") {
+               if (timeDiff < 0) {
+                  categorized.overdue.push(lead);
+               } else if (timeDiff === 0) {
+                  categorized.today.push(lead);
+               } else {
+                  categorized.upcoming.push(lead);
+               }
+            } else {
+               categorized.pending.push(lead);
+            }
           });
 
-          if (pendingOverdue.length > 0) {
-            setOverdueLeads(pendingOverdue);
-            
-            // Initialize form states
-            const initialForms: Record<string, any> = {};
-            pendingOverdue.forEach(lead => {
-              initialForms[lead.id] = {
-                followup_type: "Call",
-                status: "Interested", // Default to interested
-                remarks: "",
-                next_followup_time: "Within a Week"
-              };
-            });
-            setFollowupForms(initialForms);
-            
-            // Show modal and update local storage
+          setLeads(categorized);
+          if (categorized.overdue.length > 0) setActiveTab('overdue');
+          
+          if (categorized.overdue.length > 0 || categorized.today.length > 0 || categorized.upcoming.length > 0) {
             setIsOpen(true);
-            localStorage.setItem(storageKey, todayDateStr);
+            sessionStorage.setItem(sessionKey, 'true');
           }
         }
       } catch (err) {
-        console.error("Failed to fetch leads for daily followup:", err);
+        console.error("Failed to fetch leads for admin followup modal:", err);
       } finally {
         setIsLoading(false);
       }
@@ -143,52 +137,16 @@ export function DailyFollowupModal() {
     initializeModal();
   }, []);
 
-  const handleUpdateForm = (leadId: string, field: string, value: string) => {
-    setFollowupForms(prev => ({
-      ...prev,
-      [leadId]: {
-        ...prev[leadId],
-        [field]: value
-      }
-    }));
-  };
-
-  const handleSubmitFollowup = async (lead: Lead) => {
-    setSubmittingIds(prev => new Set(prev).add(lead.id));
-    const form = followupForms[lead.id];
-    
-    try {
-      // 1. Post to follow-up history
-      const res = await fetch(`${BACKEND_URL}/server-api/leads/follow-up`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lead_id: lead.id,
-          ...form
-        })
-      });
-
-      if (res.ok) {
-        // Remove from the local list
-        setOverdueLeads(prev => prev.filter(l => l.id !== lead.id));
-        
-        // If it's the last one, close the modal automatically after a tiny delay
-        if (overdueLeads.length === 1) {
-          setTimeout(() => setIsOpen(false), 800);
-        }
-      }
-    } catch (err) {
-      console.error("Failed to submit follow-up", err);
-    } finally {
-      setSubmittingIds(prev => {
-        const next = new Set(prev);
-        next.delete(lead.id);
-        return next;
-      });
-    }
-  };
-
   if (!isOpen) return null;
+
+  const currentList = leads[activeTab];
+
+  const tabs: { key: keyof CategorizedLeads; label: string; icon: any; count: number; color: string }[] = [
+    { key: 'overdue', label: 'Overdue', icon: AlertCircle, count: leads.overdue.length, color: 'text-rose-500 bg-rose-50' },
+    { key: 'today', label: 'Today', icon: Clock, count: leads.today.length, color: 'text-amber-500 bg-amber-50' },
+    { key: 'upcoming', label: 'Upcoming', icon: CalendarDays, count: leads.upcoming.length, color: 'text-blue-500 bg-blue-50' },
+    { key: 'pending', label: 'Other Pending', icon: Calendar, count: leads.pending.length, color: 'text-slate-500 bg-slate-50' }
+  ];
 
   return (
     <AnimatePresence>
@@ -203,123 +161,107 @@ export function DailyFollowupModal() {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="bg-[#f8f9fa] rounded-[2.5rem] border border-white/20 w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
+          className="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
         >
           {/* Header */}
-          <div className="relative bg-gradient-to-br from-[#0f5a3e] to-[#0a3f2b] p-8 text-white shrink-0 overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[50px] rounded-full pointer-events-none -mr-20 -mt-20" />
-            <div className="relative z-10 flex justify-between items-start">
-              <div>
-                <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-4 border border-white/20 shadow-inner">
-                  <Calendar className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-2xl font-black tracking-tight">Today's Follow-up Target List</h3>
-                <p className="text-emerald-100 text-sm mt-1 font-medium">
-                  You have <span className="font-black text-white px-2 py-0.5 bg-white/20 rounded-md mx-1">{overdueLeads.length}</span> students pending follow-up today.
-                </p>
+          <div className="bg-[#0f5a3e] p-6 text-white flex justify-between items-center shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-lg">
+                <Calendar className="w-6 h-6 text-white" />
               </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="w-10 h-10 rounded-full bg-black/10 hover:bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div>
+                <h3 className="text-xl font-black">Admin Follow-up Dashboard</h3>
+                <p className="text-emerald-100 text-xs font-semibold mt-0.5">Session Overview of Actionable Leads</p>
+              </div>
             </div>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-2 rounded-full hover:bg-white/20 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Navigation Tabs */}
+          <div className="flex px-6 pt-4 border-b border-slate-100 shrink-0 overflow-x-auto custom-scrollbar">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-2 px-4 py-3 border-b-2 font-bold text-sm transition-colors whitespace-nowrap ${
+                  activeTab === tab.key 
+                    ? "border-[#0f5a3e] text-[#0f5a3e]" 
+                    : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-t-lg"
+                }`}
+              >
+                <tab.icon className={`w-4 h-4 ${activeTab === tab.key ? "" : "opacity-60"}`} />
+                {tab.label}
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${tab.color}`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
           </div>
 
           {/* List Body */}
-          <div className="p-6 overflow-y-auto space-y-4">
-            {overdueLeads.length === 0 ? (
-              <div className="py-12 text-center flex flex-col items-center">
-                <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-4" />
-                <h4 className="text-xl font-black text-slate-800">All caught up!</h4>
-                <p className="text-slate-500 font-medium">You've cleared out all your daily follow-ups.</p>
-                <button 
-                  onClick={() => setIsOpen(false)}
-                  className="mt-6 px-6 py-3 bg-[#0f5a3e] text-white rounded-xl font-bold hover:bg-[#0a3f2b] transition-all"
-                >
-                  Go to Dashboard
-                </button>
+          <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50">
+            {currentList.length === 0 ? (
+              <div className="py-16 text-center flex flex-col items-center">
+                <CheckCircle2 className="w-12 h-12 text-slate-300 mb-3" />
+                <h4 className="text-lg font-black text-slate-600">No {activeTab} leads</h4>
+                <p className="text-slate-400 text-sm font-medium mt-1">You are all caught up for this category.</p>
               </div>
             ) : (
-              overdueLeads.map(lead => {
-                const form = followupForms[lead.id];
-                const isSubmitting = submittingIds.has(lead.id);
-                if (!form) return null;
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-x-auto">
+                 <table className="w-full text-sm text-left whitespace-nowrap">
+                  <thead className="text-[10px] text-slate-400 uppercase tracking-wider font-black border-b border-slate-100 bg-slate-50/80">
+                    <tr>
+                      <th className="px-5 py-3.5">Student Name</th>
+                      <th className="px-5 py-3.5">Counselor</th>
+                      <th className="px-5 py-3.5">Follow-up Date</th>
+                      <th className="px-5 py-3.5">Status</th>
+                      <th className="px-5 py-3.5 text-right">Priority</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {currentList.map(lead => {
+                      const dueDate = getFollowupDueDate(lead.created_date, lead.followup_time || "One Day");
+                      const priority = activeTab === 'overdue' ? 'High' : activeTab === 'today' ? 'Medium' : 'Low';
+                      const priorityColor = priority === 'High' ? 'bg-rose-100 text-rose-700' : priority === 'Medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600';
 
-                return (
-                  <div key={lead.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col xl:flex-row gap-6 hover:shadow-md transition-shadow">
-                    
-                    {/* Left: Lead Info */}
-                    <div className="xl:w-1/3 shrink-0 flex flex-col justify-center">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-black">
-                          <User className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h4 className="font-black text-slate-800 text-base leading-none">{lead.student_name}</h4>
-                          <span className="text-xs font-bold text-[#4361ee] mt-1 block">{lead.interested_course}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2 mt-2">
-                        <p className="text-xs font-semibold text-slate-500 flex items-center gap-2">
-                          <Phone className="w-3.5 h-3.5 text-slate-400" />
-                          {lead.phone_number}
-                        </p>
-                        <p className="text-[10px] font-bold text-rose-500 flex items-center gap-2 bg-rose-50 px-2 py-1 rounded border border-rose-100 w-fit">
-                          <Clock className="w-3 h-3" />
-                          Overdue / Due Today
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Right: Quick Action Form */}
-                    <div className="xl:w-2/3 border-t xl:border-t-0 xl:border-l border-slate-100 pt-4 xl:pt-0 xl:pl-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      
-                      <div className="md:col-span-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5 block">What happened on the call?</label>
-                        <input
-                          type="text"
-                          value={form.remarks}
-                          onChange={e => handleUpdateForm(lead.id, "remarks", e.target.value)}
-                          placeholder="e.g. Student asked to callback after 1 month"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f5a3e]"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5 z-20">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Status Update</label>
-                        <PremiumSelect
-                          value={form.status}
-                          onChange={(val) => handleUpdateForm(lead.id, "status", val)}
-                          options={STATUSES.map(s => ({ label: s, value: s }))}
-                        />
-                      </div>
-
-                      <div className="space-y-1.5 z-10">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Next Follow-up In</label>
-                        <PremiumSelect
-                          value={form.next_followup_time}
-                          onChange={(val) => handleUpdateForm(lead.id, "next_followup_time", val)}
-                          options={FOLLOWUP_TIMEFRAMES.map(t => ({ label: t, value: t }))}
-                        />
-                      </div>
-
-                      <div className="md:col-span-2 flex justify-end mt-2">
-                        <button
-                          disabled={isSubmitting || !form.remarks.trim()}
-                          onClick={() => handleSubmitFollowup(lead)}
-                          className="flex items-center gap-2 bg-[#0f5a3e] hover:bg-[#0a3f2b] text-white px-5 py-2.5 rounded-xl text-xs font-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                        >
-                          {isSubmitting ? "Saving..." : "Log & Next"}
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
+                      return (
+                        <tr key={lead.id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="px-5 py-4">
+                            <div className="font-extrabold text-slate-800">{lead.student_name}</div>
+                            <div className="text-[10px] text-slate-500 font-semibold mt-0.5">{lead.phone_number}</div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
+                              {lead.counselor_name || "Unassigned"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="text-xs font-semibold text-slate-700">
+                               {dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-semibold">{lead.followup_time || "One Day"}</div>
+                          </td>
+                          <td className="px-5 py-4">
+                             <span className="text-xs font-black text-slate-600 border border-slate-200 px-2 py-1 rounded-md">
+                               {lead.followup_status}
+                             </span>
+                          </td>
+                          <td className="px-5 py-4 text-right">
+                            <span className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${priorityColor}`}>
+                              {priority}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </motion.div>

@@ -107,6 +107,29 @@ router.post('/', requireAuth, async (req, res) => {
     const orgId = req.user?.organization_id || '00000000-0000-0000-0000-000000000001';
     const branchId = req.user?.branch_id || '00000000-0000-0000-0000-000000000002';
 
+    console.log('--- LEAD CREATION DEBUG ---');
+    console.log('Incoming Payload:', req.body);
+    console.log('Phone Number Received:', phone_number);
+    console.log('Organization ID Received:', orgId);
+
+    const { data: existingLead, error: duplicateCheckError } = await db
+      .from('leads')
+      .select('id')
+      .eq('organization_id', orgId)
+      .eq('phone', phone_number)
+      .maybeSingle();
+
+    console.log('Duplicate Query Result:', existingLead);
+    if (duplicateCheckError) {
+      console.log('Supabase duplicate check error:', duplicateCheckError);
+    }
+
+    if (existingLead) {
+      return res.status(409).json({
+        error: 'Duplicate lead found'
+      });
+    }
+
     // Do not auto-generate student ID. Let counselor add it, otherwise null.
     const nextId = student_id || null;
 
@@ -183,11 +206,11 @@ router.post('/', requireAuth, async (req, res) => {
 
     res.status(201).json({ message: 'Lead created successfully', lead: createdLead });
   } catch (error) {
-    console.error('Error creating lead:', error, JSON.stringify(error));
-    if (error && error.code === '23505') {
-      return res.status(409).json({ error: 'A lead with this phone number already exists in your organization.' });
-    }
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Error creating lead:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Internal Server Error'
+    });
   }
 });
 
@@ -290,10 +313,10 @@ router.put('/update-lead', requireAuth, async (req, res) => {
     res.json({ message: 'Lead updated successfully' });
   } catch (error) {
     console.error('Error updating lead:', error);
-    if (error && error.code === '23505') {
-      return res.status(409).json({ error: 'A lead with this phone number already exists in your organization.' });
-    }
-    res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Internal Server Error'
+    });
   }
 });
 
@@ -402,10 +425,10 @@ router.put('/:id', requireAuth, async (req, res) => {
     res.json({ message: 'Lead updated successfully' });
   } catch (error) {
     console.error('Error updating lead:', error);
-    if (error && error.code === '23505') {
-      return res.status(409).json({ error: 'A lead with this phone number already exists in your organization.' });
-    }
-    res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Internal Server Error'
+    });
   }
 });
 

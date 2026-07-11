@@ -36,6 +36,7 @@ interface Lead {
   city?: string;
   fees_discussed?: number;
   remarks?: string;
+  referred_by_student_name?: string;
 }
 
 interface Counselor {
@@ -215,7 +216,8 @@ export function LeadsDataTable() {
     gender: "Male",
     city: "",
     fees_discussed: "",
-    remarks: ""
+    remarks: "",
+    referred_by_student_name: ""
   });
 
   // Follow-up Form State
@@ -557,7 +559,8 @@ export function LeadsDataTable() {
       gender: "Male",
       city: "",
       fees_discussed: "",
-      remarks: ""
+      remarks: "",
+      referred_by_student_name: ""
     });
   };
 
@@ -576,7 +579,8 @@ export function LeadsDataTable() {
       gender: lead.gender || "Male",
       city: lead.city || "",
       fees_discussed: lead.fees_discussed ? String(lead.fees_discussed) : "",
-      remarks: lead.remarks || ""
+      remarks: lead.remarks || "",
+      referred_by_student_name: lead.referred_by_student_name || ""
     });
     setIsEditModalOpen(true);
   };
@@ -702,7 +706,8 @@ export function LeadsDataTable() {
             gender,
             city,
             fees_discussed,
-            remarks
+            remarks,
+            referred_by_student_name: ""
           };
 
           // Post to database directly
@@ -1181,17 +1186,18 @@ export function LeadsDataTable() {
               {/* Modal Form Body */}
               <form onSubmit={isAddModalOpen ? handleAddLead : handleEditLead} className="p-6 overflow-y-auto space-y-4 flex-1">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Student ID */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Student ID (Optional)</label>
-                    <input
-                      type="text"
-                      value={formInputs.student_id}
-                      onChange={(e) => setFormInputs({ ...formInputs, student_id: e.target.value })}
-                      placeholder="Leave blank to auto-generate or use null"
-                      className="w-full bg-slate-50 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f5a3e] dark:focus:ring-[#d3f46f] text-slate-900"
-                    />
-                  </div>
+                  {/* Student ID - Read Only for Edit */}
+                  {isEditModalOpen && (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Student ID</label>
+                      <input
+                        type="text"
+                        value={formInputs.student_id || 'Auto-generated'}
+                        readOnly
+                        className="w-full bg-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:outline-none text-slate-500 cursor-not-allowed"
+                      />
+                    </div>
+                  )}
 
                   {/* Name */}
                   <div className="space-y-1.5">
@@ -1221,9 +1227,10 @@ export function LeadsDataTable() {
 
                   {/* Email */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Email Address</label>
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Email Address *</label>
                     <input
                       type="email"
+                      required
                       value={formInputs.email}
                       onChange={(e) => setFormInputs({ ...formInputs, email: e.target.value })}
                       placeholder="e.g. rahul@gmail.com"
@@ -1254,6 +1261,21 @@ export function LeadsDataTable() {
                       {SOURCES.map(source => <option key={source} value={source}>{source}</option>)}
                     </select>
                   </div>
+
+                  {/* Referred By */}
+                  {formInputs.lead_source === 'Student Referral' && (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Referred By Student Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={formInputs.referred_by_student_name}
+                        onChange={(e) => setFormInputs({ ...formInputs, referred_by_student_name: e.target.value })}
+                        placeholder="Enter referring student's name"
+                        className="w-full bg-slate-50 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f5a3e] dark:focus:ring-[#d3f46f] text-slate-900"
+                      />
+                    </div>
+                  )}
 
                   {/* Counselor */}
                   <div className="space-y-1.5">

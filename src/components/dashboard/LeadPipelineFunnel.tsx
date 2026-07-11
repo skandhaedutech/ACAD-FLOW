@@ -16,10 +16,10 @@ export function LeadPipelineFunnel({ leads = [] }: { leads: Lead[] }) {
   const totalLeads = leads.length;
   
   // Calculate dynamic counts based on logical mappings of lead statuses
-  const interested = leads.filter(l => l.lead_score >= 60 || ['Done', 'Admitted'].includes(l.followup_status)).length;
-  const followUp = leads.filter(l => l.followup_status === 'Pending').length;
-  const demoAttended = leads.filter(l => l.lead_score >= 75 || l.admission_status === 'Admitted').length;
-  const admissions = leads.filter(l => l.admission_status === 'Admitted').length;
+  const interested = leads.filter(l => ['Interested', 'Done', 'Converted'].includes(l.followup_status)).length;
+  const followUp = leads.filter(l => ['Pending', 'Call Not Connected'].includes(l.followup_status)).length;
+  const demoAttended = leads.filter(l => ['Done', 'Converted'].includes(l.followup_status) || l.admission_status === 'Admitted').length;
+  const admissions = leads.filter(l => l.admission_status === 'Admitted' || l.followup_status === 'Converted').length;
 
   const steps = [
     { name: "New Lead", count: totalLeads, bg: "from-[#0f5a3e] to-[#0a3f2b]", text: "text-white" },

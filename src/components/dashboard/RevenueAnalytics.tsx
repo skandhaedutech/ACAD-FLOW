@@ -11,6 +11,7 @@ interface Lead {
   followup_status: string;
   admission_status: string;
   fees: number;
+  fees_discussed?: number;
   lead_score: number;
   created_date: string;
 }
@@ -19,11 +20,21 @@ export function RevenueAnalytics({ stats, leads = [] }: { stats: any, leads: Lea
   // Calculate dynamic financial values from leads database
   const collectedRevenue = stats.revenue || 0;
   
-  // Potential revenue = Hot leads (score >= 75) not yet admitted * average fee (75k)
-  const potentialRevenue = leads.filter(l => l.lead_score >= 75 && l.admission_status !== 'Admitted').length * 75000;
+  // Potential revenue = Leads not Admitted/Lost sum of fees_discussed
+  const potentialRevenue = leads.reduce((sum, l) => {
+    if (l.admission_status !== 'Admitted' && !['Not Interested', 'Lost'].includes(l.followup_status)) {
+      return sum + (Number(l.fees_discussed) || 0);
+    }
+    return sum;
+  }, 0);
   
-  // Pending billing = Admitted students with 0 or unrecorded fee entries
-  const pendingRevenue = leads.filter(l => l.admission_status === 'Admitted' && l.fees === 0).length * 75000;
+  // Pending billing = Admitted students with 0 or unrecorded fee entries (assuming fees_discussed is the target)
+  const pendingRevenue = leads.reduce((sum, l) => {
+    if (l.admission_status === 'Admitted' && (!l.fees || l.fees === 0)) {
+      return sum + (Number(l.fees_discussed) || 75000);
+    }
+    return sum;
+  }, 0);
 
   // Render responsive mock growth trend ending at the actual collected revenue
   const monthlyData = [

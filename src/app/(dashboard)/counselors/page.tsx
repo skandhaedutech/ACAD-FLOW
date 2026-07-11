@@ -34,6 +34,7 @@ export default function CounselorsPage() {
   const [formInputs, setFormInputs] = useState({
     name: "",
     email: "",
+    password: "",
     phone: "",
     branch: "",
     role: "Counselor"
@@ -168,6 +169,7 @@ export default function CounselorsPage() {
     setFormInputs({
       name: "",
       email: "",
+      password: "",
       phone: "",
       branch: "",
       role: "Counselor"
@@ -180,6 +182,7 @@ export default function CounselorsPage() {
     setFormInputs({
       name: counselor.name,
       email: counselor.email,
+      password: "", // Passwords are not fetched, keep empty for edit
       phone: counselor.phone || "",
       branch: counselor.branch || "",
       role: counselor.role
@@ -386,10 +389,10 @@ export default function CounselorsPage() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-white/20 dark:border-slate-700/50 w-full max-w-lg overflow-hidden shadow-2xl flex flex-col"
+              className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-white/20 dark:border-slate-700/50 w-full max-w-lg shadow-2xl flex flex-col"
             >
               {/* Modal Header */}
-              <div className="relative bg-gradient-to-br from-indigo-600 to-fuchsia-600 p-8 text-white overflow-hidden">
+              <div className="relative bg-gradient-to-br from-indigo-600 to-fuchsia-600 p-8 text-white overflow-hidden rounded-t-[2.5rem]">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[50px] rounded-full pointer-events-none -mr-20 -mt-20" />
                 <div className="relative z-10 flex justify-between items-start">
                   <div>
@@ -450,6 +453,20 @@ export default function CounselorsPage() {
                       className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-slate-900 dark:text-white placeholder-slate-400"
                     />
                   </div>
+
+                  {isAddModalOpen && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Password</label>
+                      <input
+                        type="text"
+                        required
+                        value={formInputs.password}
+                        onChange={(e) => setFormInputs({ ...formInputs, password: e.target.value })}
+                        placeholder="Create a password"
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-slate-900 dark:text-white placeholder-slate-400"
+                      />
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Phone Number</label>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { BACKEND_URL } from "@/lib/config";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ import {
   Sparkles,
   ArrowRight
 } from "lucide-react";
+import { getUserRole } from "@/app/login/actions";
 
 const routes = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
@@ -28,7 +29,6 @@ const routes = [
   { label: "Admissions", icon: UserPlus, href: "/admissions" },
   { label: "Courses", icon: BookOpen, href: "/courses" },
   { label: "Counselors", icon: GraduationCap, href: "/counselors" },
-  { label: "AI Insights", icon: Lightbulb, href: "/ai-insights" },
   { label: "Reports", icon: PieChart, href: "/reports" },
   { label: "Notifications", icon: Bell, href: "/notifications", badge: 3 },
   { label: "Integrations", icon: DatabaseZap, href: "/integrations" },
@@ -36,9 +36,25 @@ const routes = [
 
 export const Sidebar = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [userRole, setUserRole] = useState<string>("Counselor");
 
   useEffect(() => {
+    const initRole = async () => {
+      const role = await getUserRole();
+      setUserRole(role);
+      
+      // Strict frontend routing restriction
+      if (role === "Counselor") {
+        const allowedPaths = ['/', '/leads', '/courses', '/settings'];
+        if (!allowedPaths.includes(pathname)) {
+          router.push('/');
+        }
+      }
+    };
+    initRole();
+
     const fetchUnreadCount = async () => {
       try {
         const res = await fetch(`${BACKEND_URL}/server-api/notifications`);
@@ -85,6 +101,11 @@ export const Sidebar = () => {
         <p className="px-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Menu</p>
         
         {routes.map((route) => {
+          // RBAC logic for sidebar display
+          if (userRole === "Counselor" && !["Dashboard", "Leads", "Courses"].includes(route.label)) {
+            return null;
+          }
+
           const isActive = pathname === route.href || (pathname === '/' && route.label === 'Dashboard');
           const finalBadge = route.label === "Notifications" ? unreadCount : route.badge;
           

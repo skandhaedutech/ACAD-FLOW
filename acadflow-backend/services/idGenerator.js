@@ -1,36 +1,46 @@
 const db = require('../db');
 
 /**
- * Generate the next sequential Student ID (e.g., SKEDU000426)
+ * Generate the next sequential Student ID (e.g., SKUEDU0701)
  */
 async function generateNextStudentId() {
   try {
-    let nextId = 'SKEDU000001';
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // '07'
+    const prefix = `SKUEDU${month}`;
+    
     let maxNum = 0;
     
-    // Instead of just taking the first one (which might be lowercase and break), 
-    // let's fetch a few and find the highest valid number.
+    // Fetch all leads that have a student_id starting with this month's prefix
     const { data: allLeads, error: maxIdError } = await db
       .from('leads')
       .select('student_id')
-      .not('student_id', 'is', null);
+      .not('student_id', 'is', null)
+      .like('student_id', `${prefix}%`);
 
     if (!maxIdError && allLeads && allLeads.length > 0) {
       allLeads.forEach(lead => {
         const id = lead.student_id.toUpperCase();
-        if (id.startsWith('SKEDU')) {
-          const numPart = parseInt(id.replace('SKEDU', ''), 10);
+        if (id.startsWith(prefix)) {
+          const numPartStr = id.replace(prefix, '');
+          const numPart = parseInt(numPartStr, 10);
           if (!isNaN(numPart) && numPart > maxNum) {
             maxNum = numPart;
           }
         }
       });
-      nextId = `SKEDU${String(maxNum + 1).padStart(6, '0')}`;
     }
-    return nextId;
+    
+    const nextNum = maxNum + 1;
+    // Format running number with at least 2 digits padding
+    const runningNumberStr = String(nextNum).padStart(2, '0');
+    return `${prefix}${runningNumberStr}`;
   } catch (err) {
     console.error('Error generating student ID:', err);
-    return `SKEDU${String(Math.floor(Math.random() * 900000) + 100000)}`; // fallback
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const rand = String(Math.floor(Math.random() * 90) + 10);
+    return `SKUEDU${month}${rand}`; // fallback
   }
 }
 

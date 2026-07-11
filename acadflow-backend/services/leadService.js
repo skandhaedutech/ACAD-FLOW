@@ -131,8 +131,8 @@ router.post('/', requireAuth, async (req, res) => {
       });
     }
 
-    // Auto-generate student ID if not provided
-    const nextId = student_id || await generateNextStudentId();
+    // Always auto-generate unique student ID during lead creation
+    const nextId = await generateNextStudentId();
 
     const newLead = {
       name: student_name,
@@ -356,7 +356,8 @@ router.put('/:id', requireAuth, async (req, res) => {
     const currentLead = currentLeads[0];
 
     const updates = {};
-    if (student_id !== undefined) updates.student_id = student_id === "" ? null : student_id;
+    // Do not allow users to manually modify the Student ID
+    // student_id is omitted from updates
     if (student_name !== undefined) updates.name = student_name;
     if (phone_number !== undefined) updates.phone = phone_number;
     if (email !== undefined) updates.email = email;

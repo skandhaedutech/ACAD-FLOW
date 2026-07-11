@@ -180,12 +180,11 @@ router.post('/', requireAuth, async (req, res) => {
       }
     }
 
-    // Generate student ID if needed
-    let finalStudentId = student_id || '';
+    // Generate student ID automatically
     const nextId = await generateNextStudentId();
+    let finalStudentId = '';
 
     const metadata = {
-      student_id: finalStudentId,
       gender,
       date_of_birth,
       address,
@@ -209,12 +208,12 @@ router.post('/', requireAuth, async (req, res) => {
     let leadId = null;
     const { data: existingLeads } = await db
       .from('leads')
-      .select('id')
+      .select('id, student_id')
       .eq('phone', phone_number);
 
     if (existingLeads && existingLeads.length > 0) {
       leadId = existingLeads[0].id;
-      finalStudentId = student_id || existingLeads[0].student_id || nextId; // fallback if missing
+      finalStudentId = existingLeads[0].student_id || nextId; // reuse or generate if missing
       await db
         .from('leads')
         .update({ 
@@ -226,7 +225,7 @@ router.post('/', requireAuth, async (req, res) => {
         })
         .eq('id', leadId);
     } else {
-      finalStudentId = student_id || nextId;
+      finalStudentId = nextId;
       const { data: newLeads } = await db
         .from('leads')
         .insert([{

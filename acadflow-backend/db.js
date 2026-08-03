@@ -1,5 +1,4 @@
 const { createClient } = require('@supabase/supabase-js');
-const ws = require('ws');
 require('dotenv').config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -9,10 +8,6 @@ if (!supabaseUrl || !supabaseKey) {
   console.error('Missing Supabase credentials in .env');
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  realtime: {
-    transport: ws,
-  },
-});
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 module.exports = supabase;

@@ -882,40 +882,24 @@ export default function AdmissionsPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Selected Course *</label>
-                <select 
-                  name="course" value={formState.course} onChange={handleFormChange}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
-                >
-                  <option>Full Stack Development</option>
-                  <option>Python Programming</option>
-                  <option>AI & Data Science</option>
-                  <option>UI/UX Design</option>
-                  <option>Beginner Python Course</option>
-                </select>
+                <input 
+                  type="text" name="course" value={formState.course} onChange={handleFormChange} placeholder="e.g. Full Stack Development"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
+                />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Course Duration</label>
-                <select 
-                  name="course_duration" value={formState.course_duration} onChange={handleFormChange}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
-                >
-                  <option>3 Months</option>
-                  <option>6 Months</option>
-                  <option>9 Months</option>
-                  <option>12 Months</option>
-                </select>
+                <input 
+                  type="text" name="course_duration" value={formState.course_duration} onChange={handleFormChange} placeholder="e.g. 6 Months"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
+                />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Batch Timing</label>
-                <select 
-                  name="batch" value={formState.batch} onChange={handleFormChange}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
-                >
-                  <option>Morning (9 AM - 11 AM)</option>
-                  <option>Afternoon (2 PM - 4 PM)</option>
-                  <option>Evening (6 PM - 8 PM)</option>
-                  <option>Weekend Fast-Track</option>
-                </select>
+                <input 
+                  type="text" name="batch" value={formState.batch} onChange={handleFormChange} placeholder="e.g. Morning (9 AM - 11 AM)"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
+                />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Trainer Assigned</label>
@@ -968,16 +952,10 @@ export default function AdmissionsPage() {
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Payment Mode</label>
-                <select 
-                  name="payment_mode" value={formState.payment_mode} onChange={handleFormChange}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
-                >
-                  <option>UPI</option>
-                  <option>GPay</option>
-                  <option>Bank Transfer</option>
-                  <option>Cash</option>
-                  <option>Card Payment</option>
-                </select>
+                <input 
+                  type="text" name="payment_mode" value={formState.payment_mode} onChange={handleFormChange} placeholder="e.g. UPI, GPay, Cash"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
+                />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Transaction ID</label>
@@ -988,15 +966,10 @@ export default function AdmissionsPage() {
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Installment Plan</label>
-                <select 
-                  name="installment_option" value={formState.installment_option} onChange={handleFormChange}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
-                >
-                  <option>One-Time Payment</option>
-                  <option>2 Installments</option>
-                  <option>3 Installments</option>
-                  <option>Monthly EMI Scheme</option>
-                </select>
+                <input 
+                  type="text" name="installment_option" value={formState.installment_option} onChange={handleFormChange} placeholder="e.g. 3 Installments"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
+                />
               </div>
             </div>
           </div>
@@ -1021,27 +994,17 @@ export default function AdmissionsPage() {
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Year of Study</label>
-                <select 
-                  name="year_of_study" value={formState.year_of_study} onChange={handleFormChange}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
-                >
-                  <option>1st Year</option>
-                  <option>2nd Year</option>
-                  <option>3rd Year</option>
-                  <option>4th Year</option>
-                  <option>Graduated</option>
-                </select>
+                <input 
+                  type="text" name="year_of_study" value={formState.year_of_study} onChange={handleFormChange} placeholder="e.g. 4th Year"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
+                />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Current Skill Level</label>
-                <select 
-                  name="skill_level" value={formState.skill_level} onChange={handleFormChange}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-855"
-                >
-                  <option>Beginner (No prior coding)</option>
-                  <option>Intermediate (Know basic syntax)</option>
-                  <option>Advanced (Know project architectures)</option>
-                </select>
+                <input 
+                  type="text" name="skill_level" value={formState.skill_level} onChange={handleFormChange} placeholder="e.g. Beginner, Intermediate, Advanced"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
+                />
               </div>
             </div>
           </div>
@@ -1052,28 +1015,17 @@ export default function AdmissionsPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Original Lead Source</label>
-                <select 
-                  name="lead_source" value={formState.lead_source} onChange={handleFormChange}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
-                >
-                  <option>Instagram</option>
-                  <option>Website</option>
-                  <option>Referral</option>
-                  <option>Facebook</option>
-                  <option>WhatsApp</option>
-                  <option>Direct Walk-In</option>
-                </select>
+                <input 
+                  type="text" name="lead_source" value={formState.lead_source} onChange={handleFormChange} placeholder="e.g. Instagram, Website, Referral"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
+                />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Counselor in Charge</label>
-                <select 
-                  name="counselor_name" value={formState.counselor_name} onChange={handleFormChange}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
-                >
-                  <option>Anita</option>
-                  <option>Rajesh</option>
-                  <option>Priya</option>
-                </select>
+                <input 
+                  type="text" name="counselor_name" value={formState.counselor_name} onChange={handleFormChange} placeholder="e.g. Anita, Rajesh"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
+                />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Date of Admission</label>

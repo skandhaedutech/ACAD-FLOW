@@ -123,22 +123,28 @@ const syncSheetsToDB = async (io) => {
     };
 
     for (const row of rows) {
-      const student_name = row[1] ? row[1].trim() : '';
-      const phone = row[2] ? row[2].trim() : '';
+      const student_name = row[2] ? row[2].trim() : '';
+      const phone = row[3] ? row[3].trim() : '';
       
-      if (!phone || phone === 'Phone Number' || phone.toLowerCase().includes('contact') || student_name === 'Student Name' || student_name.toLowerCase().includes('name')) continue;
+      if (!phone || 
+          phone === 'Phone Number' || 
+          phone.toLowerCase().includes('phone') ||
+          phone.toLowerCase().includes('contact') || 
+          student_name === 'Student Name' || 
+          student_name === 'STUDENT PROFILE' || 
+          student_name.toLowerCase().includes('name')) continue;
 
       const name = student_name || ('Lead - ' + phone);
-      const email = row[3] ? row[3].trim() : '';
-      const course_interested_raw = row[4] ? row[4].trim() : '';
+      const email = row[4] ? row[4].trim() : '';
+      const course_interested_raw = row[5] ? row[5].trim() : '';
       const course_interested = COURSE_MAPPING[course_interested_raw] || course_interested_raw;
       
-      const sheet_fees = row[5] ? parseFloat(row[5].toString().replace(/[^0-9.]/g, '')) : 0;
+      const sheet_fees = row[6] ? parseFloat(row[6].toString().replace(/[^0-9.]/g, '')) : 0;
       const fees = sheet_fees || COURSE_FEES[course_interested] || 35000;
       
-      const source = row[6] ? row[6].trim() : 'Google Sheet';
+      const source = row[7] ? row[7].trim() : 'Google Sheet';
       
-      let raw_status = row[7] ? row[7].trim() : 'Pending';
+      let raw_status = row[8] ? row[8].trim() : 'Pending';
       let followup_status = 'Pending';
       if (raw_status.toLowerCase() === 'not interested' || raw_status.toLowerCase() === 'lost') {
         followup_status = 'Not Interested';
@@ -150,13 +156,13 @@ const syncSheetsToDB = async (io) => {
         followup_status = 'Pending';
       }
 
-      const admission_status = (row[8] && row[8].trim() === 'Admitted') || followup_status === 'Converted' ? 'Admitted' : 'Not Admitted';
+      const admission_status = (row[9] && row[9].trim() === 'Admitted') || followup_status === 'Converted' ? 'Admitted' : 'Not Admitted';
       if (admission_status === 'Admitted' && followup_status !== 'Converted') {
         followup_status = 'Converted';
       }
 
-      const counselor_name = row[9] ? row[9].trim() : '';
-      const last_contacted_str = row[11] || row[10] || '';
+      const counselor_name = row[10] ? row[10].trim() : '';
+      const last_contacted_str = row[12] || row[11] || '';
       
       const manual_student_id = row[0] ? row[0].trim() : null;
       

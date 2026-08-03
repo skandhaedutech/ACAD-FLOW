@@ -407,6 +407,10 @@ export function LeadsDataTable() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Update failed");
+
+      if (value === 'Converted' || value === 'Admitted') {
+        window.location.href = `/admissions?convert=true&name=${encodeURIComponent(lead.student_name)}&phone=${encodeURIComponent(lead.phone_number)}&email=${encodeURIComponent(lead.email || '')}&course=${encodeURIComponent(lead.interested_course || '')}&counselor=${encodeURIComponent(lead.counselor_name || '')}`;
+      }
     } catch (error) {
       console.error("Failed to update status", error);
       fetchLeads();
@@ -1115,6 +1119,16 @@ export function LeadsDataTable() {
                               </option>
                             ))}
                           </select>
+
+                          {/* Convert to Admission Button */}
+                          <Link
+                            href={`/admissions?convert=true&name=${encodeURIComponent(lead.student_name)}&phone=${encodeURIComponent(lead.phone_number)}&email=${encodeURIComponent(lead.email || '')}&course=${encodeURIComponent(lead.interested_course || '')}&counselor=${encodeURIComponent(lead.counselor_name || '')}`}
+                            className="p-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-250/30 rounded-lg text-emerald-700 font-extrabold text-[10px] flex items-center gap-1 transition-all cursor-pointer"
+                            title="Convert Lead to Student Admission Registration"
+                          >
+                            <GraduationCap className="w-3.5 h-3.5 text-emerald-700" />
+                            <span className="hidden sm:inline">Convert</span>
+                          </Link>
 
                           {/* Log Follow-up Button */}
                           <button

@@ -431,7 +431,7 @@ export default function CounselorsPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Full Name</label>
+                    <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Full Name *</label>
                     <input
                       type="text"
                       required
@@ -443,7 +443,7 @@ export default function CounselorsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Email Address</label>
+                    <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Email Address *</label>
                     <input
                       type="email"
                       required
@@ -454,15 +454,26 @@ export default function CounselorsPage() {
                     />
                   </div>
 
-                  {isAddModalOpen && (
+                  {isAddModalOpen ? (
                     <div className="space-y-2">
-                      <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Password</label>
+                      <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Password * (Set by Admin)</label>
                       <input
                         type="text"
                         required
                         value={formInputs.password}
                         onChange={(e) => setFormInputs({ ...formInputs, password: e.target.value })}
-                        placeholder="Create a password"
+                        placeholder="Assign password for member login"
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-slate-900 dark:text-white placeholder-slate-400"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">New Password (Optional)</label>
+                      <input
+                        type="text"
+                        value={formInputs.password}
+                        onChange={(e) => setFormInputs({ ...formInputs, password: e.target.value })}
+                        placeholder="Leave blank to keep existing password"
                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-slate-900 dark:text-white placeholder-slate-400"
                       />
                     </div>

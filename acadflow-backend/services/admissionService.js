@@ -5,6 +5,16 @@ const eventBus = require('./eventBus');
 const dbAdmin = require('../db'); // Admin client for background EventBus processes
 const { generateNextStudentId } = require('./idGenerator');
 
+function getCourseFee(courseName) {
+  if (!courseName) return 35000;
+  const name = courseName.toLowerCase();
+  if (name.includes('python')) return 30000;
+  if (name.includes('ui/ux') || name.includes('design')) return 32000;
+  if (name.includes('data science') || name.includes('ai')) return 40000;
+  if (name.includes('digital marketing')) return 30000;
+  return 35000;
+}
+
 // 📥 Decoupled Subscriber: Create admission record when a lead is converted
 eventBus.subscribe('lead.converted', async (payload) => {
   console.log(`[AdmissionService] 📥 Auto-enrolling converted lead: ${payload.student_name}`);
@@ -22,6 +32,8 @@ eventBus.subscribe('lead.converted', async (payload) => {
       return;
     }
     
+    const defaultFees = getCourseFee(course);
+    
     // Create baseline admission record in PostgreSQL
     const { error } = await dbAdmin
       .from('admissions')
@@ -30,7 +42,7 @@ eventBus.subscribe('lead.converted', async (payload) => {
         organization_id,
         branch_id,
         course,
-        fees: 0,
+        fees: defaultFees,
         payment_status: 'Pending'
       }]);
       
@@ -61,6 +73,7 @@ router.get('/', requireAuth, async (req, res) => {
           name,
           phone,
           email,
+          notes,
           created_at,
           counselors (
             name
@@ -74,25 +87,35 @@ router.get('/', requireAuth, async (req, res) => {
     const formattedAdmissions = (admissions || []).map(adm => {
       const lead = adm.leads || {};
       const counselor = lead.counselors || {};
-      const feesVal = parseFloat(adm.fees || 0);
+      
+      let meta = {};
+      try {
+        if (lead.notes && typeof lead.notes === 'string' && lead.notes.startsWith('{')) {
+          meta = JSON.parse(lead.notes);
+        }
+      } catch (e) {}
+
+      const defaultFee = getCourseFee(adm.course);
+      const rawFees = parseFloat(adm.fees);
+      const feesVal = (rawFees && rawFees > 0) ? rawFees : (meta.final_fees || meta.course_fees || defaultFee);
       
       // Dynamic emi-status calculation
       let emiStatus = adm.payment_status || 'Pending';
-      if (emiStatus === 'Pending') {
-        const randomStatuses = ['Pending', 'Overdue', 'Upcoming'];
-        const seed = lead.name ? lead.name.charCodeAt(0) : 0;
-        emiStatus = randomStatuses[seed % randomStatuses.length];
+      
+      let amountPaid = meta.amount_paid !== undefined && meta.amount_paid !== null && meta.amount_paid !== "" ? parseFloat(meta.amount_paid) : null;
+      let pendingAmount = meta.pending_amount !== undefined && meta.pending_amount !== null && meta.pending_amount !== "" ? parseFloat(meta.pending_amount) : null;
+
+      if (amountPaid === null || isNaN(amountPaid)) {
+        if (emiStatus === 'Paid') {
+          amountPaid = feesVal;
+          pendingAmount = 0;
+        } else {
+          amountPaid = Math.round(feesVal * 0.35);
+          pendingAmount = Math.max(feesVal - amountPaid, 0);
+        }
+      } else if (pendingAmount === null || isNaN(pendingAmount)) {
+        pendingAmount = Math.max(feesVal - amountPaid, 0);
       }
-
-      const amountPaid = emiStatus === 'Paid' 
-        ? feesVal 
-        : emiStatus === 'Pending' 
-          ? Math.round(feesVal * 0.4) 
-          : emiStatus === 'Overdue' 
-            ? Math.round(feesVal * 0.2) 
-            : Math.round(feesVal * 0.6);
-
-      const pendingAmount = Math.max(feesVal - amountPaid, 0);
 
       return {
         id: adm.id,
@@ -193,6 +216,8 @@ router.post('/', requireAuth, async (req, res) => {
       trainer,
       discount,
       final_fees,
+      amount_paid,
+      pending_amount,
       payment_mode,
       transaction_id,
       installment_option,

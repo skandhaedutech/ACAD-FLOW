@@ -147,17 +147,26 @@ export default function AdmissionsPage() {
       if (params.get("convert") === "true") {
         setActiveTab("add");
         
-        const cFees = params.get("course")?.includes("Python") ? 30000 : 35000;
+        const courseParam = params.get("course") || "Full Stack Development";
+        let cFees = 35000;
+        if (courseParam.includes("Python")) cFees = 30000;
+        else if (courseParam.includes("UI/UX") || courseParam.includes("Design")) cFees = 32000;
+        else if (courseParam.includes("Digital Marketing")) cFees = 30000;
+        else if (courseParam.includes("AI")) cFees = 40000;
+
+        const paid = 10000;
         setFormState(prev => ({
           ...prev,
           student_name: params.get("name") || "",
           phone_number: params.get("phone") || "",
           email: params.get("email") || "",
-          course: params.get("course") || "Full Stack Development",
+          course: courseParam,
           counselor_name: params.get("counselor") || "Anita",
           course_fees: cFees,
+          discount: 0,
           final_fees: cFees,
-          pending_amount: cFees - prev.amount_paid
+          amount_paid: paid,
+          pending_amount: cFees - paid
         }));
         
         // Clean URL to prevent prefilling again on reload
@@ -833,9 +842,9 @@ export default function AdmissionsPage() {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Email Address</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Email Address *</label>
                 <input 
-                  type="email" name="email" value={formState.email} onChange={handleFormChange}
+                  type="email" required name="email" value={formState.email} onChange={handleFormChange}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
                 />
               </div>

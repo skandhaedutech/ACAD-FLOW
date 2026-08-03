@@ -101,7 +101,7 @@ router.post('/', requireAuth, requireRole(['Admin', 'Super Admin']), async (req,
 // 3. PUT /api/counselors/:id - Update counselor details
 router.put('/:id', requireAuth, requireRole(['Admin', 'Super Admin']), async (req, res) => {
   const { id } = req.params;
-  const { name, email, phone, branch, role } = req.body;
+  const { name, email, password, phone, branch, role } = req.body;
 
   try {
     const db = getTenantDb(req);
@@ -109,6 +109,7 @@ router.put('/:id', requireAuth, requireRole(['Admin', 'Super Admin']), async (re
     const updates = {};
     if (name !== undefined) updates.name = name;
     if (email !== undefined) updates.email = email;
+    if (password) updates.password = password;
     if (phone !== undefined) updates.phone = phone;
     if (branch !== undefined) updates.branch = branch;
     if (role !== undefined) updates.role = role;

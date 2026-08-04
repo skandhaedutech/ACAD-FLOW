@@ -57,7 +57,7 @@ export default function AdmissionsPage() {
     phone_number: "",
     email: "",
     gender: "Male",
-    date_of_birth: "",
+    date_of_joining: "",
     address: "",
     
     // Course Details
@@ -92,6 +92,10 @@ export default function AdmissionsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingAdmissionId, setEditingAdmissionId] = useState<string | null>(null);
+  const [isEditingEmis, setIsEditingEmis] = useState(false);
+  const [tempEmis, setTempEmis] = useState<number[]>([]);
 
   // Fetch admissions
   const fetchAdmissions = async () => {
@@ -177,27 +181,129 @@ export default function AdmissionsPage() {
 
   // Calculate fees dynamically
   useEffect(() => {
-    const final = Math.max(formState.course_fees - formState.discount, 0);
-    const pending = Math.max(final - formState.amount_paid, 0);
-    setFormState(prev => ({
-      ...prev,
-      final_fees: final,
-      pending_amount: pending
-    }));
+    const fees = Number(formState.course_fees) || 0;
+    const discount = Number(formState.discount) || 0;
+    const paid = Number(formState.amount_paid) || 0;
+    
+    const final = Math.max(fees - discount, 0);
+    const pending = Math.max(final - paid, 0);
+    
+    setFormState(prev => {
+      if (prev.final_fees === final && prev.pending_amount === pending) return prev;
+      return {
+        ...prev,
+        final_fees: final,
+        pending_amount: pending
+      };
+    });
   }, [formState.course_fees, formState.discount, formState.amount_paid]);
 
   // Handle Form Change
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    const numberFields = ["course_fees", "discount", "amount_paid"];
     
     setFormState(prev => ({
       ...prev,
-      [name]: numberFields.includes(name) ? parseFloat(value || "0") : value
+      [name]: value
     }));
   };
 
-  // Submit Admission
+  // Reset form helper
+  const resetAdmissionForm = () => {
+    setFormState({
+      student_id: "",
+      student_name: "",
+      phone_number: "",
+      email: "",
+      gender: "Male",
+      date_of_joining: "",
+      address: "",
+      course: "Full Stack Development",
+      course_duration: "6 Months",
+      batch: "Morning (9 AM - 11 AM)",
+      trainer: "Amit Sharma",
+      course_fees: 35000,
+      discount: 0,
+      final_fees: 35000,
+      amount_paid: 10000,
+      pending_amount: 25000,
+      payment_mode: "UPI",
+      transaction_id: "",
+      installment_option: "3 Installments",
+      college_name: "",
+      degree: "",
+      year_of_study: "4th Year",
+      skill_level: "Beginner",
+      lead_source: "Instagram",
+      counselor_name: "Anita",
+      admission_date: format(new Date(), "yyyy-MM-dd"),
+      notes: ""
+    });
+    setIsEditMode(false);
+    setEditingAdmissionId(null);
+  };
+
+  // Open Edit Mode - pre-fills form with selected student data
+  const handleOpenEditAdmission = (student: Admission) => {
+    setIsEditMode(true);
+    setEditingAdmissionId(student.id);
+    setFormState({
+      student_id: student.student_id || "",
+      student_name: student.student_name || "",
+      phone_number: student.phone_number || "",
+      email: student.email || "",
+      gender: "Male",
+      date_of_joining: "",
+      address: "",
+      course: student.course || "Full Stack Development",
+      course_duration: "6 Months",
+      batch: "Morning (9 AM - 11 AM)",
+      trainer: "Amit Sharma",
+      course_fees: student.total_fee || 35000,
+      discount: 0,
+      final_fees: student.total_fee || 35000,
+      amount_paid: student.amount_paid || 0,
+      pending_amount: student.pending_amount || 0,
+      payment_mode: "UPI",
+      transaction_id: "",
+      installment_option: "3 Installments",
+      college_name: "",
+      degree: "",
+      year_of_study: "4th Year",
+      skill_level: "Beginner",
+      lead_source: "Instagram",
+      counselor_name: student.counselor_name || "Anita",
+      admission_date: student.admission_date ? format(new Date(student.admission_date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+      notes: ""
+    });
+    setActiveTab("add");
+    setErrorMessage("");
+    setSuccessMessage("");
+  };
+
+  // Delete Admission
+  const handleDeleteAdmission = async (studentId: string, studentName: string) => {
+    if (!confirm(`Are you sure you want to delete the admission record for "${studentName}"? This action cannot be undone.`)) return;
+    try {
+      const res = await fetch(`${BACKEND_URL}/server-api/admissions/${studentId}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        await fetchAdmissions();
+        if (selectedStudent?.id === studentId) {
+          setSelectedStudent(null);
+        }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Failed to delete admission.");
+      }
+    } catch (err) {
+      console.error("Failed to delete admission:", err);
+      alert("Network error while deleting admission. Please try again.");
+    }
+  };
+
+  // Submit Admission (handles both Add and Edit)
   const handleAddAdmission = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -205,44 +311,20 @@ export default function AdmissionsPage() {
     setSuccessMessage("");
 
     try {
-      const res = await fetch(`${BACKEND_URL}/server-api/admissions`, {
-        method: "POST",
+      const url = isEditMode && editingAdmissionId
+        ? `${BACKEND_URL}/server-api/admissions/${editingAdmissionId}`
+        : `${BACKEND_URL}/server-api/admissions`;
+      const method = isEditMode ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formState)
       });
 
       if (res.ok) {
-        setSuccessMessage("Admission created successfully! Lead has been marked as Converted.");
-        // Reset form
-        setFormState({
-          student_id: "",
-          student_name: "",
-          phone_number: "",
-          email: "",
-          gender: "Male",
-          date_of_birth: "",
-          address: "",
-          course: "Full Stack Development",
-          course_duration: "6 Months",
-          batch: "Morning (9 AM - 11 AM)",
-          trainer: "Amit Sharma",
-          course_fees: 35000,
-          discount: 0,
-          final_fees: 35000,
-          amount_paid: 10000,
-          pending_amount: 25000,
-          payment_mode: "UPI",
-          transaction_id: "",
-          installment_option: "3 Installments",
-          college_name: "",
-          degree: "",
-          year_of_study: "4th Year",
-          skill_level: "Beginner",
-          lead_source: "Instagram",
-          counselor_name: "Anita",
-          admission_date: format(new Date(), "yyyy-MM-dd"),
-          notes: ""
-        });
+        setSuccessMessage(isEditMode ? "Admission updated successfully!" : "Admission created successfully! Lead has been marked as Converted.");
+        resetAdmissionForm();
         await fetchAdmissions();
         setTimeout(() => {
           setSuccessMessage("");
@@ -250,7 +332,7 @@ export default function AdmissionsPage() {
         }, 1500);
       } else {
         const data = await res.json();
-        setErrorMessage(data.error || "Failed to create admission record.");
+        setErrorMessage(data.error || `Failed to ${isEditMode ? 'update' : 'create'} admission record.`);
       }
     } catch (err) {
       console.error(err);
@@ -345,15 +427,18 @@ export default function AdmissionsPage() {
 
   // Helper for generating EMIs list
   const generateEmiSchedule = (student: Admission) => {
-    const total = student.total_fee;
-    const emiCount = 3;
-    const emiAmount = Math.round(total / emiCount);
+    const paidAmount = student.amount_paid || 0;
+    const pendingAmount = student.pending_amount || 0;
     
-    let emi1Status = "Paid";
+    // Split the pending amount into remaining EMIs (2 and 3)
+    const emi2Amount = Math.ceil(pendingAmount / 2);
+    const emi3Amount = pendingAmount - emi2Amount;
+    
+    let emi1Status = paidAmount > 0 ? "Paid" : "Pending";
     let emi2Status = "Upcoming";
     let emi3Status = "Upcoming";
 
-    if (student.emi_status === "Paid") {
+    if (student.emi_status === "Paid" || pendingAmount === 0) {
       emi1Status = "Paid";
       emi2Status = "Paid";
       emi3Status = "Paid";
@@ -376,29 +461,29 @@ export default function AdmissionsPage() {
     return [
       {
         no: 1,
-        dueDate: format(new Date(admDate.getFullYear(), admDate.getMonth() + 1, admDate.getDate()), "MMM dd, yyyy"),
-        amount: emiAmount,
+        dueDate: format(new Date(admDate.getFullYear(), admDate.getMonth(), admDate.getDate()), "MMM dd, yyyy"),
+        amount: paidAmount,
         status: emi1Status,
-        paidDate: format(new Date(admDate.getFullYear(), admDate.getMonth() + 1, admDate.getDate() - 3), "MMM dd, yyyy"),
-        method: "GPay"
+        paidDate: emi1Status === "Paid" ? format(new Date(admDate.getFullYear(), admDate.getMonth(), admDate.getDate()), "MMM dd, yyyy") : "-",
+        method: emi1Status === "Paid" ? "UPI/Bank" : "-"
       },
       {
         no: 2,
-        dueDate: format(new Date(admDate.getFullYear(), admDate.getMonth() + 2, admDate.getDate()), "MMM dd, yyyy"),
-        amount: emiAmount,
-        status: emi2Status,
-        paidDate: emi2Status === "Paid" ? format(new Date(admDate.getFullYear(), admDate.getMonth() + 2, admDate.getDate() - 2), "MMM dd, yyyy") : "-",
-        method: emi2Status === "Paid" ? "Bank Transfer" : "-"
+        dueDate: format(new Date(admDate.getFullYear(), admDate.getMonth() + 1, admDate.getDate()), "MMM dd, yyyy"),
+        amount: emi2Amount,
+        status: emi2Amount === 0 ? "Paid" : emi2Status,
+        paidDate: (emi2Amount === 0 || emi2Status === "Paid") ? format(new Date(admDate.getFullYear(), admDate.getMonth() + 1, admDate.getDate()), "MMM dd, yyyy") : "-",
+        method: (emi2Amount === 0 || emi2Status === "Paid") ? "UPI/Bank" : "-"
       },
       {
         no: 3,
-        dueDate: format(new Date(admDate.getFullYear(), admDate.getMonth() + 3, admDate.getDate()), "MMM dd, yyyy"),
-        amount: emiAmount,
-        status: emi3Status,
-        paidDate: emi3Status === "Paid" ? format(new Date(admDate.getFullYear(), admDate.getMonth() + 3, admDate.getDate() - 1), "MMM dd, yyyy") : "-",
-        method: emi3Status === "Paid" ? "UPI" : "-"
+        dueDate: format(new Date(admDate.getFullYear(), admDate.getMonth() + 2, admDate.getDate()), "MMM dd, yyyy"),
+        amount: emi3Amount,
+        status: emi3Amount === 0 ? "Paid" : emi3Status,
+        paidDate: (emi3Amount === 0 || emi3Status === "Paid") ? format(new Date(admDate.getFullYear(), admDate.getMonth() + 2, admDate.getDate()), "MMM dd, yyyy") : "-",
+        method: (emi3Amount === 0 || emi3Status === "Paid") ? "UPI/Bank" : "-"
       }
-    ];
+    ].filter(emi => emi.amount > 0 || emi.no === 1); // Keep at least the first installment
   };
 
   const getStatusBadge = (status: string) => {
@@ -643,9 +728,29 @@ export default function AdmissionsPage() {
                               {format(new Date(student.admission_date), "MMM d, yyyy")}
                             </td>
                             <td className="px-4 py-3 text-center">
-                              <button className="text-[#0f5a3e] hover:scale-110 transition-transform p-1">
-                                <ChevronRight className="h-4 w-4" />
-                              </button>
+                              <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                <button 
+                                  onClick={() => setSelectedStudent(student)}
+                                  className="text-[#0f5a3e] hover:bg-[#0f5a3e]/10 rounded-lg p-1.5 transition-colors" 
+                                  title="View Details"
+                                >
+                                  <ChevronRight className="h-4 w-4" />
+                                </button>
+                                <button 
+                                  onClick={() => handleOpenEditAdmission(student)}
+                                  className="text-[#4361ee]/80 hover:text-[#4361ee] hover:bg-[#4361ee]/10 rounded-lg p-1.5 transition-colors" 
+                                  title="Edit"
+                                >
+                                  <FileText className="h-4 w-4" />
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteAdmission(student.id, student.student_name)}
+                                  className="text-rose-500/80 hover:text-rose-600 hover:bg-rose-50 rounded-lg p-1.5 transition-colors" 
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -695,7 +800,7 @@ export default function AdmissionsPage() {
                     </div>
                   </div>
 
-                  {/* Fee Summary */}
+                  {/* Fee Summary - Editable */}
                   <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 space-y-4">
                     <div className="flex justify-between items-center">
                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Fee Summary</h4>
@@ -706,18 +811,83 @@ export default function AdmissionsPage() {
 
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div className="bg-white border border-slate-100 p-2.5 rounded-xl">
-                        <p className="text-[9px] font-black text-slate-400 uppercase mb-0.5">Total</p>
-                        <p className="text-slate-800 font-black text-xs">₹{selectedStudent.total_fee.toLocaleString()}</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Total</p>
+                        <input
+                          type="number"
+                          value={selectedStudent.total_fee}
+                          onChange={(e) => {
+                            const newTotal = Number(e.target.value) || 0;
+                            setSelectedStudent(prev => prev ? {
+                              ...prev,
+                              total_fee: newTotal,
+                              pending_amount: Math.max(newTotal - prev.amount_paid, 0)
+                            } : null);
+                          }}
+                          className="w-full text-center text-slate-800 font-black text-xs bg-slate-50 border border-slate-200 rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-[#0f5a3e]"
+                        />
                       </div>
                       <div className="bg-emerald-50/50 border border-emerald-100/50 p-2.5 rounded-xl">
-                        <p className="text-[9px] font-black text-emerald-600 uppercase mb-0.5">Paid</p>
-                        <p className="text-emerald-700 font-black text-xs">₹{selectedStudent.amount_paid.toLocaleString()}</p>
+                        <p className="text-[9px] font-black text-emerald-600 uppercase mb-1">Paid</p>
+                        <input
+                          type="number"
+                          value={selectedStudent.amount_paid}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setSelectedStudent(prev => {
+                              if (!prev) return null;
+                              const newPending = Math.max(prev.total_fee - val, 0);
+                              return {
+                                ...prev,
+                                amount_paid: val,
+                                pending_amount: newPending,
+                                emi_status: newPending > 0 ? "Pending" : "Paid"
+                              };
+                            });
+                          }}
+                          className="w-full text-center text-emerald-700 font-black text-xs bg-emerald-50 border border-emerald-200 rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                        />
                       </div>
                       <div className="bg-amber-50/50 border border-amber-100/50 p-2.5 rounded-xl">
-                        <p className="text-[9px] font-black text-amber-600 uppercase mb-0.5">Pending</p>
-                        <p className="text-amber-700 font-black text-xs">₹{selectedStudent.pending_amount.toLocaleString()}</p>
+                        <p className="text-[9px] font-black text-amber-600 uppercase mb-1">Pending</p>
+                        <p className="text-amber-700 font-black text-xs py-1">₹{selectedStudent.pending_amount.toLocaleString()}</p>
                       </div>
                     </div>
+
+                    {/* Save Updated Fees Button */}
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`${BACKEND_URL}/server-api/admissions/${selectedStudent.id}`, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              student_name: selectedStudent.student_name,
+                              phone_number: selectedStudent.phone_number,
+                              email: selectedStudent.email,
+                              course: selectedStudent.course,
+                              course_fees: selectedStudent.total_fee,
+                              final_fees: selectedStudent.total_fee,
+                              amount_paid: selectedStudent.amount_paid,
+                              pending_amount: selectedStudent.pending_amount,
+                              counselor_name: selectedStudent.counselor_name
+                            })
+                          });
+                          if (res.ok) {
+                            await fetchAdmissions();
+                            setSuccessMessage("Fee details updated!");
+                            setTimeout(() => setSuccessMessage(""), 2000);
+                          } else {
+                            alert("Failed to update fee details.");
+                          }
+                        } catch (err) {
+                          console.error("Fee update error:", err);
+                          alert("Network error. Please try again.");
+                        }
+                      }}
+                      className="w-full py-2 rounded-xl bg-[#4361ee] hover:bg-[#3451d1] text-white font-black text-[10px] transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      <Check className="w-3.5 h-3.5" /> Save Updated Fees
+                    </button>
 
                     {/* Progress Bar */}
                     <div className="space-y-1.5">
@@ -794,9 +964,20 @@ export default function AdmissionsPage() {
       {/* TAB 2: ADD ADMISSION FORM */}
       {activeTab === "add" && (
         <form onSubmit={handleAddAdmission} className="bg-white rounded-[28px] p-8 border border-slate-100 shadow-sm space-y-8 animate-in fade-in duration-150">
-          <div>
-            <h3 className="text-base font-black text-slate-800 uppercase tracking-wider mb-1">Academy Admission Registration</h3>
-            <p className="text-slate-400 text-xs font-semibold">Fill out all enrollment fields below to register the student and convert the lead record.</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-black text-slate-800 uppercase tracking-wider mb-1">{isEditMode ? "Edit Admission Record" : "Academy Admission Registration"}</h3>
+              <p className="text-slate-400 text-xs font-semibold">{isEditMode ? "Update the enrollment details for this student." : "Fill out all enrollment fields below to register the student and convert the lead record."}</p>
+            </div>
+            {isEditMode && (
+              <button
+                type="button"
+                onClick={() => { resetAdmissionForm(); setActiveTab("list"); }}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-xl px-4 py-2 hover:bg-slate-50 transition-all"
+              >
+                Cancel Edit
+              </button>
+            )}
           </div>
 
           {errorMessage && (
@@ -860,9 +1041,9 @@ export default function AdmissionsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Date of Birth</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Date of Joining</label>
                 <input 
-                  type="date" name="date_of_birth" value={formState.date_of_birth} onChange={handleFormChange}
+                  type="date" name="date_of_joining" value={formState.date_of_joining} onChange={handleFormChange}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
                 />
               </div>
@@ -1050,7 +1231,7 @@ export default function AdmissionsPage() {
               type="submit" disabled={isSaving}
               className="bg-[#0f5a3e] hover:bg-[#0a3f2b] text-white px-8 py-3.5 rounded-xl text-xs font-black hover:scale-105 transition-transform disabled:opacity-75 shadow-md shadow-[#0f5a3e]/10"
             >
-              {isSaving ? "Saving Admission..." : "Save Admission & Convert Lead"}
+              {isSaving ? (isEditMode ? "Updating..." : "Saving Admission...") : (isEditMode ? "Update Admission" : "Save Admission & Convert Lead")}
             </button>
           </div>
         </form>

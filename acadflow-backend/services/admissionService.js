@@ -117,6 +117,13 @@ router.get('/', requireAuth, async (req, res) => {
         pendingAmount = Math.max(feesVal - amountPaid, 0);
       }
 
+      // Ensure emiStatus accurately reflects the calculated amounts to prevent desync errors
+      if (pendingAmount > 0) {
+        emiStatus = 'Pending';
+      } else if (pendingAmount <= 0 && amountPaid >= feesVal) {
+        emiStatus = 'Paid';
+      }
+
       return {
         id: adm.id,
         student_id: lead.student_id || '',
@@ -129,7 +136,8 @@ router.get('/', requireAuth, async (req, res) => {
         pending_amount: pendingAmount,
         emi_status: emiStatus,
         counselor_name: counselor.name || 'Unassigned',
-        admission_date: adm.joined_date
+        admission_date: adm.joined_date,
+        custom_emis: meta.custom_emis || null
       };
     });
 
@@ -169,7 +177,8 @@ router.post('/', requireAuth, async (req, res) => {
     lead_source,
     counselor_name,
     notes,
-    admission_date
+    admission_date,
+    custom_emis
   } = req.body;
 
   if (!student_name || !phone_number || !course) {
@@ -225,7 +234,8 @@ router.post('/', requireAuth, async (req, res) => {
       degree,
       year_of_study,
       skill_level,
-      notes: notes || ''
+      notes: notes || '',
+      custom_emis
     };
     const notesJsonStr = JSON.stringify(metadata);
 
@@ -362,6 +372,132 @@ router.put('/:id/pay', requireAuth, requireRole(['Super Admin', 'Accounts']), as
   } catch (error) {
     console.error('Error recording payment:', error);
     res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// 4. PUT /api/admissions/:id - Edit an admission record
+router.put('/:id', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const {
+    student_name,
+    phone_number,
+    email,
+    course,
+    course_fees,
+    discount,
+    final_fees,
+    amount_paid,
+    pending_amount,
+    payment_mode,
+    counselor_name,
+    gender,
+    date_of_joining,
+    address,
+    course_duration,
+    batch,
+    trainer,
+    transaction_id,
+    installment_option,
+    college_name,
+    degree,
+    year_of_study,
+    skill_level,
+    notes,
+    custom_emis
+  } = req.body;
+
+  try {
+    const db = getTenantDb(req);
+
+    // Fetch the admission to get linked lead_id
+    const { data: admissions, error: fetchErr } = await db
+      .from('admissions')
+      .select('*, leads(id, name, phone)')
+      .eq('id', id);
+
+    if (fetchErr || !admissions || admissions.length === 0) {
+      return res.status(404).json({ error: 'Admission record not found' });
+    }
+
+    const adm = admissions[0];
+    const leadId = adm.lead_id || adm.leads?.id;
+
+    // Update admission table fields
+    const paymentStatus = parseFloat(pending_amount || 0) > 0 ? 'Pending' : 'Paid';
+    const { error: admErr } = await db
+      .from('admissions')
+      .update({
+        course: course || adm.course,
+        fees: parseFloat(final_fees || course_fees || adm.fees),
+        payment_status: paymentStatus
+      })
+      .eq('id', id);
+
+    if (admErr) throw admErr;
+
+    // Update linked lead record with new metadata
+    if (leadId) {
+      const metadata = {
+        gender, date_of_joining: date_of_joining, address,
+        course_duration, batch, trainer, discount, final_fees,
+        amount_paid, pending_amount, payment_mode, transaction_id,
+        installment_option, college_name, degree, year_of_study,
+        skill_level, notes: notes || '',
+        custom_emis
+      };
+
+      // Find counselor ID
+      let counselorId = undefined;
+      if (counselor_name) {
+        const { data: counselors } = await db
+          .from('counselors')
+          .select('id')
+          .eq('name', counselor_name);
+        if (counselors && counselors.length > 0) {
+          counselorId = counselors[0].id;
+        }
+      }
+
+      const leadUpdate = {
+        name: student_name || undefined,
+        phone: phone_number || undefined,
+        email: email || undefined,
+        course_interested: course || undefined,
+        notes: JSON.stringify(metadata),
+        ...(counselorId ? { counselor_id: counselorId } : {})
+      };
+
+      // Remove undefined values
+      Object.keys(leadUpdate).forEach(k => leadUpdate[k] === undefined && delete leadUpdate[k]);
+
+      await db.from('leads').update(leadUpdate).eq('id', leadId);
+    }
+
+    res.json({ success: true, message: 'Admission updated successfully' });
+  } catch (error) {
+    console.error('Error updating admission:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// 5. DELETE /api/admissions/:id - Soft delete an admission record
+router.delete('/:id', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const db = getTenantDb(req);
+
+    // Perform soft delete by setting deleted_at to current timestamp
+    const { error: softErr } = await db
+      .from('admissions')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (softErr) throw softErr;
+
+    res.json({ success: true, message: 'Admission deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting admission:', error);
+    res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 });
 

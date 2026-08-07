@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { 
   Search, Plus, ChevronRight, Phone, Mail, Award, Clock,
   FileText, Download, Check, GraduationCap, RefreshCw, ChevronDown,
   Calendar, CreditCard, User, BookOpen, Trash2, Printer, CheckCircle2,
-  DollarSign, TrendingUp, AlertCircle
+  DollarSign, TrendingUp, AlertCircle, Edit3, Save, X, PlusCircle
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
@@ -30,6 +30,15 @@ interface Admission {
   admission_date: string;
 }
 
+interface Installment {
+  id?: string;
+  admission_id?: string;
+  amount: number;
+  due_date: string;
+  paid: boolean;
+  paid_date?: string | null;
+}
+
 export default function AdmissionsPage() {
   const [admissions, setAdmissions] = useState<Admission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,7 +58,18 @@ export default function AdmissionsPage() {
   const [filterCounselor, setFilterCounselor] = useState("All");
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
-  // Add Admission Form State
+  // Installment State
+  const [installments, setInstallments] = useState<Installment[]>([]);
+  const [isLoadingInstallments, setIsLoadingInstallments] = useState(false);
+  const [isEditingInstallments, setIsEditingInstallments] = useState(false);
+  const [editInstallments, setEditInstallments] = useState<Installment[]>([]);
+  const [isSavingInstallments, setIsSavingInstallments] = useState(false);
+
+  // Edit Mode for personal info
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingAdmissionId, setEditingAdmissionId] = useState<string | null>(null);
+
+  // Add/Edit Admission Form State
   const [formState, setFormState] = useState({
     // Student Info
     student_id: "",
@@ -89,13 +109,12 @@ export default function AdmissionsPage() {
     notes: ""
   });
 
+  // Form installment schedule for new admissions
+  const [formInstallments, setFormInstallments] = useState<{amount: number; due_date: string}[]>([]);
+
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editingAdmissionId, setEditingAdmissionId] = useState<string | null>(null);
-  const [isEditingEmis, setIsEditingEmis] = useState(false);
-  const [tempEmis, setTempEmis] = useState<number[]>([]);
 
   // Fetch admissions
   const fetchAdmissions = async () => {
@@ -112,6 +131,52 @@ export default function AdmissionsPage() {
       console.warn("Failed to fetch admissions:", err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Fetch installments for a specific admission
+  const fetchInstallments = useCallback(async (admissionId: string) => {
+    setIsLoadingInstallments(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/server-api/installments?admission_id=${admissionId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setInstallments(data || []);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch installments:", err);
+      setInstallments([]);
+    } finally {
+      setIsLoadingInstallments(false);
+    }
+  }, []);
+
+  // Save installments
+  const saveInstallments = async () => {
+    if (!selectedStudent) return;
+    setIsSavingInstallments(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/server-api/installments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          admission_id: selectedStudent.id,
+          installments: editInstallments.map(i => ({
+            amount: i.amount,
+            due_date: i.due_date,
+            paid: i.paid,
+            paid_date: i.paid_date || null
+          }))
+        })
+      });
+      if (res.ok) {
+        await fetchInstallments(selectedStudent.id);
+        setIsEditingInstallments(false);
+      }
+    } catch (err) {
+      console.error("Failed to save installments:", err);
+    } finally {
+      setIsSavingInstallments(false);
     }
   };
 
@@ -143,6 +208,16 @@ export default function AdmissionsPage() {
       supabase.removeChannel(admissionsChannel);
     };
   }, []);
+
+  // Fetch installments when selected student changes
+  useEffect(() => {
+    if (selectedStudent?.id) {
+      fetchInstallments(selectedStudent.id);
+      setIsEditingInstallments(false);
+    } else {
+      setInstallments([]);
+    }
+  }, [selectedStudent?.id, fetchInstallments]);
 
   // Listen for Lead Conversion Query Params
   useEffect(() => {
@@ -198,6 +273,37 @@ export default function AdmissionsPage() {
     });
   }, [formState.course_fees, formState.discount, formState.amount_paid]);
 
+  // Auto-generate form installments when installment option or fees change
+  useEffect(() => {
+    const pending = formState.pending_amount;
+    if (pending <= 0) {
+      setFormInstallments([]);
+      return;
+    }
+
+    let count = 0;
+    if (formState.installment_option === "2 Installments") count = 2;
+    else if (formState.installment_option === "3 Installments") count = 3;
+    else if (formState.installment_option === "Monthly EMI Scheme") count = 6;
+    
+    if (count === 0) {
+      setFormInstallments([]);
+      return;
+    }
+
+    const perInstallment = Math.round(pending / count);
+    const admDate = new Date(formState.admission_date || new Date());
+    const newInstallments = Array.from({ length: count }, (_, i) => {
+      const dueDate = new Date(admDate);
+      dueDate.setMonth(dueDate.getMonth() + i + 1);
+      return {
+        amount: i === count - 1 ? pending - perInstallment * (count - 1) : perInstallment,
+        due_date: format(dueDate, "yyyy-MM-dd")
+      };
+    });
+    setFormInstallments(newInstallments);
+  }, [formState.installment_option, formState.pending_amount, formState.admission_date]);
+
   // Handle Form Change
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -239,6 +345,7 @@ export default function AdmissionsPage() {
       admission_date: format(new Date(), "yyyy-MM-dd"),
       notes: ""
     });
+    setFormInstallments([]);
     setIsEditMode(false);
     setEditingAdmissionId(null);
   };
@@ -276,6 +383,7 @@ export default function AdmissionsPage() {
       admission_date: student.admission_date ? format(new Date(student.admission_date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
       notes: ""
     });
+    // Set custom emis preview if they exist in the state
     setActiveTab("add");
     setErrorMessage("");
     setSuccessMessage("");
@@ -303,7 +411,7 @@ export default function AdmissionsPage() {
     }
   };
 
-  // Submit Admission (handles both Add and Edit)
+  // Submit Admission
   const handleAddAdmission = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -316,10 +424,15 @@ export default function AdmissionsPage() {
         : `${BACKEND_URL}/server-api/admissions`;
       const method = isEditMode ? "PUT" : "POST";
 
+      const payload = {
+        ...formState,
+        custom_emis: formInstallments.length > 0 ? formInstallments : undefined
+      };
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formState)
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
@@ -425,65 +538,19 @@ export default function AdmissionsPage() {
     return data;
   }, [admissions]);
 
-  // Helper for generating EMIs list
-  const generateEmiSchedule = (student: Admission) => {
-    const paidAmount = student.amount_paid || 0;
-    const pendingAmount = student.pending_amount || 0;
-    
-    // Split the pending amount into remaining EMIs (2 and 3)
-    const emi2Amount = Math.ceil(pendingAmount / 2);
-    const emi3Amount = pendingAmount - emi2Amount;
-    
-    let emi1Status = paidAmount > 0 ? "Paid" : "Pending";
-    let emi2Status = "Upcoming";
-    let emi3Status = "Upcoming";
-
-    if (student.emi_status === "Paid" || pendingAmount === 0) {
-      emi1Status = "Paid";
-      emi2Status = "Paid";
-      emi3Status = "Paid";
-    } else if (student.emi_status === "Overdue") {
-      emi1Status = "Paid";
-      emi2Status = "Overdue";
-      emi3Status = "Upcoming";
-    } else if (student.emi_status === "Pending") {
-      emi1Status = "Paid";
-      emi2Status = "Pending";
-      emi3Status = "Upcoming";
-    } else if (student.emi_status === "Upcoming") {
-      emi1Status = "Paid";
-      emi2Status = "Upcoming";
-      emi3Status = "Upcoming";
-    }
-
-    const admDate = new Date(student.admission_date);
-
-    return [
-      {
-        no: 1,
-        dueDate: format(new Date(admDate.getFullYear(), admDate.getMonth(), admDate.getDate()), "MMM dd, yyyy"),
-        amount: paidAmount,
-        status: emi1Status,
-        paidDate: emi1Status === "Paid" ? format(new Date(admDate.getFullYear(), admDate.getMonth(), admDate.getDate()), "MMM dd, yyyy") : "-",
-        method: emi1Status === "Paid" ? "UPI/Bank" : "-"
-      },
-      {
-        no: 2,
-        dueDate: format(new Date(admDate.getFullYear(), admDate.getMonth() + 1, admDate.getDate()), "MMM dd, yyyy"),
-        amount: emi2Amount,
-        status: emi2Amount === 0 ? "Paid" : emi2Status,
-        paidDate: (emi2Amount === 0 || emi2Status === "Paid") ? format(new Date(admDate.getFullYear(), admDate.getMonth() + 1, admDate.getDate()), "MMM dd, yyyy") : "-",
-        method: (emi2Amount === 0 || emi2Status === "Paid") ? "UPI/Bank" : "-"
-      },
-      {
-        no: 3,
-        dueDate: format(new Date(admDate.getFullYear(), admDate.getMonth() + 2, admDate.getDate()), "MMM dd, yyyy"),
-        amount: emi3Amount,
-        status: emi3Amount === 0 ? "Paid" : emi3Status,
-        paidDate: (emi3Amount === 0 || emi3Status === "Paid") ? format(new Date(admDate.getFullYear(), admDate.getMonth() + 2, admDate.getDate()), "MMM dd, yyyy") : "-",
-        method: (emi3Amount === 0 || emi3Status === "Paid") ? "UPI/Bank" : "-"
-      }
-    ].filter(emi => emi.amount > 0 || emi.no === 1); // Keep at least the first installment
+  // Helper: get installment status label based on due date and paid status
+  const getInstallmentStatus = (inst: Installment): string => {
+    if (inst.paid) return "Paid";
+    if (!inst.due_date) return "Upcoming";
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(inst.due_date);
+    due.setHours(0, 0, 0, 0);
+    if (due < today) return "Overdue";
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    if (due <= sevenDaysFromNow) return "Pending";
+    return "Upcoming";
   };
 
   const getStatusBadge = (status: string) => {
@@ -550,8 +617,230 @@ export default function AdmissionsPage() {
     setShowReceiptModal(true);
   };
 
+  // Start editing installments
+  const startEditingInstallments = () => {
+    if (installments.length > 0) {
+      setEditInstallments(installments.map(i => ({ ...i })));
+    } else if (selectedStudent) {
+      // Pre-populate with default schedule based on pending amount
+      const pending = selectedStudent.pending_amount;
+      const count = 3;
+      const perInstallment = Math.round(pending / count);
+      const admDate = new Date(selectedStudent.admission_date);
+      setEditInstallments(
+        Array.from({ length: count }, (_, i) => {
+          const dueDate = new Date(admDate);
+          dueDate.setMonth(dueDate.getMonth() + i + 1);
+          return {
+            amount: i === count - 1 ? pending - perInstallment * (count - 1) : perInstallment,
+            due_date: format(dueDate, "yyyy-MM-dd"),
+            paid: false,
+            paid_date: null
+          };
+        })
+      );
+    }
+    setIsEditingInstallments(true);
+  };
+
+  // Render installment rows (real data from DB or fallback prompt)
+  const renderInstallmentSection = () => {
+    if (!selectedStudent) return null;
+
+    // Editing mode
+    if (isEditingInstallments) {
+      return (
+        <div className="space-y-3 animate-fade-in">
+          <div className="flex justify-between items-center">
+            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Edit Installment Schedule</h4>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsEditingInstallments(false)}
+                className="text-[10px] font-black text-slate-400 hover:text-slate-600 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveInstallments}
+                disabled={isSavingInstallments}
+                className="text-[10px] font-black text-white bg-[#0f5a3e] hover:bg-[#0a3f2b] px-3 py-1 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
+              >
+                <Save className="w-3 h-3" />
+                {isSavingInstallments ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            {editInstallments.map((inst, idx) => (
+              <div key={idx} className="bg-slate-50/80 rounded-xl p-3 border border-slate-100 flex items-center gap-3 animate-slide-up" style={{ animationDelay: `${idx * 0.05}s` }}>
+                <div className="text-[10px] font-black text-slate-400 w-5 shrink-0">#{idx + 1}</div>
+                
+                <div className="flex-1 space-y-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase">Amount (₹)</label>
+                  <input
+                    type="number"
+                    value={inst.amount}
+                    onChange={(e) => {
+                      const updated = [...editInstallments];
+                      updated[idx].amount = parseFloat(e.target.value || "0");
+                      setEditInstallments(updated);
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#0f5a3e]"
+                  />
+                </div>
+                
+                <div className="flex-1 space-y-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase">Due Date</label>
+                  <input
+                    type="date"
+                    value={inst.due_date || ""}
+                    onChange={(e) => {
+                      const updated = [...editInstallments];
+                      updated[idx].due_date = e.target.value;
+                      setEditInstallments(updated);
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#0f5a3e]"
+                  />
+                </div>
+                
+                <div className="flex flex-col items-center gap-1 pt-3">
+                  <label className="text-[9px] font-black text-slate-400 uppercase">Paid</label>
+                  <input
+                    type="checkbox"
+                    checked={inst.paid}
+                    onChange={(e) => {
+                      const updated = [...editInstallments];
+                      updated[idx].paid = e.target.checked;
+                      if (e.target.checked) {
+                        updated[idx].paid_date = format(new Date(), "yyyy-MM-dd");
+                      } else {
+                        updated[idx].paid_date = null;
+                      }
+                      setEditInstallments(updated);
+                    }}
+                    className="w-4 h-4 rounded border-slate-300 text-[#0f5a3e] focus:ring-[#0f5a3e] cursor-pointer accent-[#0f5a3e]"
+                  />
+                </div>
+                
+                <button
+                  onClick={() => {
+                    setEditInstallments(editInstallments.filter((_, i) => i !== idx));
+                  }}
+                  className="text-slate-300 hover:text-rose-500 transition-colors p-1 mt-3"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+          
+          <button
+            onClick={() => {
+              const lastDate = editInstallments.length > 0 
+                ? new Date(editInstallments[editInstallments.length - 1].due_date || new Date())
+                : new Date(selectedStudent.admission_date);
+              const nextDate = new Date(lastDate);
+              nextDate.setMonth(nextDate.getMonth() + 1);
+              setEditInstallments([...editInstallments, {
+                amount: 0,
+                due_date: format(nextDate, "yyyy-MM-dd"),
+                paid: false,
+                paid_date: null
+              }]);
+            }}
+            className="w-full py-2 rounded-xl border-2 border-dashed border-slate-200 hover:border-[#0f5a3e]/30 text-[10px] font-black text-slate-400 hover:text-[#0f5a3e] transition-colors flex items-center justify-center gap-1.5"
+          >
+            <PlusCircle className="w-3.5 h-3.5" /> Add Installment Row
+          </button>
+        </div>
+      );
+    }
+
+    // View mode - show real installments from DB
+    if (isLoadingInstallments) {
+      return (
+        <div className="space-y-3">
+          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">EMI Installments</h4>
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="skeleton h-10 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (installments.length === 0) {
+      // No installments set — show setup prompt
+      return (
+        <div className="space-y-3">
+          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">EMI Installments</h4>
+          <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-4 text-center space-y-3">
+            <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
+              <Calendar className="w-5 h-5 text-amber-600" />
+            </div>
+            <p className="text-[10px] font-bold text-amber-700">No installment schedule configured yet.</p>
+            <button
+              onClick={startEditingInstallments}
+              className="text-[10px] font-black text-white bg-[#0f5a3e] hover:bg-[#0a3f2b] px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5 mx-auto"
+            >
+              <PlusCircle className="w-3.5 h-3.5" /> Set Up Due Dates
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Display real installments from DB
+    return (
+      <div className="space-y-3">
+        <div className="flex justify-between items-center">
+          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">EMI Installments</h4>
+          <button
+            onClick={startEditingInstallments}
+            className="text-[10px] font-black text-[#0f5a3e] hover:text-[#0a3f2b] flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[#0f5a3e]/5 transition-colors"
+          >
+            <Edit3 className="w-3 h-3" /> Edit
+          </button>
+        </div>
+        <div className="bg-slate-50/30 rounded-2xl overflow-hidden border border-slate-100">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 text-[9px] text-slate-400 uppercase tracking-wider font-black border-b border-slate-200">
+              <tr>
+                <th className="px-3 py-2.5">Term</th>
+                <th className="px-3 py-2.5">Due Date</th>
+                <th className="px-3 py-2.5">Amount</th>
+                <th className="px-3 py-2.5">Paid Date</th>
+                <th className="px-3 py-2.5 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {installments.map((inst, idx) => {
+                const status = getInstallmentStatus(inst);
+                return (
+                  <tr key={inst.id || idx} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-3 py-2.5 font-bold text-slate-800 text-[11px]">Installment {idx + 1}</td>
+                    <td className="px-3 py-2.5 text-slate-500 font-bold text-[10px]">
+                      {inst.due_date ? format(new Date(inst.due_date), "MMM dd, yyyy") : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-800 font-black text-[10px]">₹{Number(inst.amount).toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-slate-400 font-bold text-[10px]">
+                      {inst.paid_date ? format(new Date(inst.paid_date), "MMM dd, yyyy") : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-right">{getStatusBadge(status)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="w-full space-y-6 pb-8 text-[#1c1d21]">
+    <div className="w-full space-y-6 pb-8 text-[#1c1d21] page-enter">
       {/* 1. Top Title Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -582,7 +871,7 @@ export default function AdmissionsPage() {
           { title: "Revenue Generated", value: `₹${metrics.revenue.toLocaleString()}`, icon: <DollarSign className="text-emerald-500" />, desc: "Total collected fees" },
           { title: "Pending Fees", value: `₹${metrics.pending.toLocaleString()}`, icon: <AlertCircle className="text-rose-500" />, desc: "Outstanding collection dues" }
         ].map((card, idx) => (
-          <div key={idx} className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-all group">
+          <div key={idx} className={`bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-all group animate-slide-up stagger-${idx + 1}`}>
             <div className="flex justify-between items-start">
               <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{card.title}</div>
               <div className="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-[#0f5a3e]/10 transition-colors">
@@ -611,7 +900,7 @@ export default function AdmissionsPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-5 py-3 border-b-2 text-xs font-black transition-all ${
+              className={`flex items-center gap-2 px-5 py-3 border-b-2 text-xs font-black transition-all duration-200 ${
                 isActive 
                   ? "border-[#0f5a3e] text-[#0f5a3e] bg-slate-50/50" 
                   : "border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-300"
@@ -628,7 +917,7 @@ export default function AdmissionsPage() {
       
       {/* TAB 1: ADMISSIONS LIST */}
       {activeTab === "list" && (
-        <div className="space-y-4 animate-in fade-in duration-150">
+        <div className="space-y-4 tab-content-enter">
           {/* Filters Toolbar */}
           <div className="bg-slate-50/80 rounded-[24px] p-4 border border-slate-200/50 shadow-sm flex flex-col lg:flex-row lg:items-center gap-4">
             <div className="relative flex-1">
@@ -745,7 +1034,7 @@ export default function AdmissionsPage() {
                                 </button>
                                 <button 
                                   onClick={() => handleDeleteAdmission(student.id, student.student_name)}
-                                  className="text-rose-500/80 hover:text-rose-600 hover:bg-rose-50 rounded-lg p-1.5 transition-colors" 
+                                  className="text-rose-500/80 hover:text-rose-600 hover:bg-rose-50 rounded-lg p-1.5 transition-colors"
                                   title="Delete"
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -764,7 +1053,7 @@ export default function AdmissionsPage() {
             {/* Right Side Detail Drawer */}
             <div className="xl:col-span-1">
               {selectedStudent ? (
-                <div className="bg-white rounded-[28px] p-6 border border-slate-100 shadow-sm space-y-6 relative overflow-hidden">
+                <div className="bg-white rounded-[28px] p-6 border border-slate-100 shadow-sm space-y-6 relative overflow-hidden animate-slide-in-right">
                   <div className="flex justify-between items-center pb-3 border-b border-slate-100">
                     <div>
                       <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Student Profile</h3>
@@ -778,7 +1067,7 @@ export default function AdmissionsPage() {
                   </div>
 
                   <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-full bg-[#0f5a3e]/10 border border-[#0f5a3e]/20 flex items-center justify-center text-[#0f5a3e] text-sm font-black uppercase">
+                    <div className="w-11 h-11 rounded-full bg-[#0f5a3e]/10 border border-[#0f5a3e]/20 text-[#0f5a3e] flex items-center justify-center text-[#0f5a3e] text-sm font-black uppercase">
                       {selectedStudent.student_name.charAt(0)}
                     </div>
                     <div className="space-y-0.5 min-w-0">
@@ -800,7 +1089,7 @@ export default function AdmissionsPage() {
                     </div>
                   </div>
 
-                  {/* Fee Summary - Editable */}
+                  {/* Fee Summary */}
                   <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 space-y-4">
                     <div className="flex justify-between items-center">
                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Fee Summary</h4>
@@ -811,83 +1100,18 @@ export default function AdmissionsPage() {
 
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div className="bg-white border border-slate-100 p-2.5 rounded-xl">
-                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Total</p>
-                        <input
-                          type="number"
-                          value={selectedStudent.total_fee}
-                          onChange={(e) => {
-                            const newTotal = Number(e.target.value) || 0;
-                            setSelectedStudent(prev => prev ? {
-                              ...prev,
-                              total_fee: newTotal,
-                              pending_amount: Math.max(newTotal - prev.amount_paid, 0)
-                            } : null);
-                          }}
-                          className="w-full text-center text-slate-800 font-black text-xs bg-slate-50 border border-slate-200 rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-[#0f5a3e]"
-                        />
+                        <p className="text-[9px] font-black text-slate-400 uppercase mb-0.5">Total</p>
+                        <p className="text-slate-800 font-black text-xs">₹{selectedStudent.total_fee.toLocaleString()}</p>
                       </div>
                       <div className="bg-emerald-50/50 border border-emerald-100/50 p-2.5 rounded-xl">
-                        <p className="text-[9px] font-black text-emerald-600 uppercase mb-1">Paid</p>
-                        <input
-                          type="number"
-                          value={selectedStudent.amount_paid}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value) || 0;
-                            setSelectedStudent(prev => {
-                              if (!prev) return null;
-                              const newPending = Math.max(prev.total_fee - val, 0);
-                              return {
-                                ...prev,
-                                amount_paid: val,
-                                pending_amount: newPending,
-                                emi_status: newPending > 0 ? "Pending" : "Paid"
-                              };
-                            });
-                          }}
-                          className="w-full text-center text-emerald-700 font-black text-xs bg-emerald-50 border border-emerald-200 rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                        />
+                        <p className="text-[9px] font-black text-emerald-600 uppercase mb-0.5">Paid</p>
+                        <p className="text-emerald-700 font-black text-xs">₹{selectedStudent.amount_paid.toLocaleString()}</p>
                       </div>
                       <div className="bg-amber-50/50 border border-amber-100/50 p-2.5 rounded-xl">
-                        <p className="text-[9px] font-black text-amber-600 uppercase mb-1">Pending</p>
-                        <p className="text-amber-700 font-black text-xs py-1">₹{selectedStudent.pending_amount.toLocaleString()}</p>
+                        <p className="text-[9px] font-black text-amber-600 uppercase mb-0.5">Pending</p>
+                        <p className="text-amber-700 font-black text-xs">₹{selectedStudent.pending_amount.toLocaleString()}</p>
                       </div>
                     </div>
-
-                    {/* Save Updated Fees Button */}
-                    <button
-                      onClick={async () => {
-                        try {
-                          const res = await fetch(`${BACKEND_URL}/server-api/admissions/${selectedStudent.id}`, {
-                            method: "PUT",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              student_name: selectedStudent.student_name,
-                              phone_number: selectedStudent.phone_number,
-                              email: selectedStudent.email,
-                              course: selectedStudent.course,
-                              course_fees: selectedStudent.total_fee,
-                              final_fees: selectedStudent.total_fee,
-                              amount_paid: selectedStudent.amount_paid,
-                              pending_amount: selectedStudent.pending_amount,
-                              counselor_name: selectedStudent.counselor_name
-                            })
-                          });
-                          if (res.ok) {
-                            await fetchAdmissions();
-                            setSuccessMessage("Fee details updated!");
-                            setTimeout(() => setSuccessMessage(""), 2000);
-                          } else {
-                            alert("Failed to update fee details.");
-                          }
-                        } catch (err) {
-                          console.error("Fee update error:", err);
-                          alert("Network error. Please try again.");
-                        }
-                      }}
-                      className="w-full py-2 rounded-xl bg-[#4361ee] hover:bg-[#3451d1] text-white font-black text-[10px] transition-all flex items-center justify-center gap-1.5 shadow-sm"
-                    >
-                      <Check className="w-3.5 h-3.5" /> Save Updated Fees
-                    </button>
 
                     {/* Progress Bar */}
                     <div className="space-y-1.5">
@@ -906,32 +1130,8 @@ export default function AdmissionsPage() {
                     </div>
                   </div>
 
-                  {/* EMI schedule */}
-                  <div className="space-y-3">
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">EMI Installments</h4>
-                    <div className="bg-slate-50/30 rounded-2xl overflow-hidden border border-slate-100">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-50 text-[9px] text-slate-400 uppercase tracking-wider font-black border-b border-slate-200">
-                          <tr>
-                            <th className="px-3 py-2.5">Term</th>
-                            <th className="px-3 py-2.5">Due Date</th>
-                            <th className="px-3 py-2.5">Amount</th>
-                            <th className="px-3 py-2.5 text-right">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {generateEmiSchedule(selectedStudent).map((emi) => (
-                            <tr key={emi.no} className="hover:bg-slate-50 transition-colors">
-                              <td className="px-3 py-2.5 font-bold text-slate-800 text-[11px]">Installment {emi.no}</td>
-                              <td className="px-3 py-2.5 text-slate-400 font-bold text-[10px]">{emi.dueDate}</td>
-                              <td className="px-3 py-2.5 text-slate-800 font-black text-[10px]">₹{emi.amount.toLocaleString()}</td>
-                              <td className="px-3 py-2.5 text-right">{getStatusBadge(emi.status)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                  {/* EMI schedule - REAL DATA */}
+                  {renderInstallmentSection()}
 
                   {/* Action Buttons: Invoice/Receipt */}
                   <div className="grid grid-cols-2 gap-3 pt-2">
@@ -961,34 +1161,38 @@ export default function AdmissionsPage() {
         </div>
       )}
 
-      {/* TAB 2: ADD ADMISSION FORM */}
+      {/* TAB 2: ADD/EDIT ADMISSION FORM */}
       {activeTab === "add" && (
-        <form onSubmit={handleAddAdmission} className="bg-white rounded-[28px] p-8 border border-slate-100 shadow-sm space-y-8 animate-in fade-in duration-150">
-          <div className="flex items-center justify-between">
+        <form onSubmit={handleAddAdmission} className="bg-white rounded-[28px] p-8 border border-slate-100 shadow-sm space-y-8 tab-content-enter">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-4">
             <div>
-              <h3 className="text-base font-black text-slate-800 uppercase tracking-wider mb-1">{isEditMode ? "Edit Admission Record" : "Academy Admission Registration"}</h3>
-              <p className="text-slate-400 text-xs font-semibold">{isEditMode ? "Update the enrollment details for this student." : "Fill out all enrollment fields below to register the student and convert the lead record."}</p>
+              <h3 className="text-base font-black text-slate-800 uppercase tracking-wider mb-1">
+                {isEditMode ? "Edit Student Admission" : "Academy Admission Registration"}
+              </h3>
+              <p className="text-slate-400 text-xs font-semibold">
+                {isEditMode ? "Modify enrollment records and student profile settings." : "Fill out all enrollment fields below to register the student and convert the lead record."}
+              </p>
             </div>
             {isEditMode && (
-              <button
-                type="button"
-                onClick={() => { resetAdmissionForm(); setActiveTab("list"); }}
-                className="text-xs font-bold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-xl px-4 py-2 hover:bg-slate-50 transition-all"
+              <button 
+                type="button" 
+                onClick={resetAdmissionForm}
+                className="flex items-center gap-1 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
               >
-                Cancel Edit
+                <X className="w-4 h-4" /> Cancel Edit
               </button>
             )}
           </div>
 
           {errorMessage && (
-            <div className="bg-rose-50 border border-rose-250/20 text-rose-600 p-4 rounded-2xl text-xs font-bold flex items-center gap-2">
+            <div className="animate-slide-up bg-rose-50 border border-rose-250/20 text-rose-600 p-4 rounded-2xl text-xs font-bold flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-500" />
               {errorMessage}
             </div>
           )}
 
           {successMessage && (
-            <div className="bg-emerald-50 border border-emerald-250/20 text-emerald-700 p-4 rounded-2xl text-xs font-bold flex items-center gap-2">
+            <div className="animate-slide-up bg-emerald-50 border border-emerald-250/20 text-emerald-700 p-4 rounded-2xl text-xs font-bold flex items-center gap-2">
               <Check className="w-4 h-4 text-emerald-600" />
               {successMessage}
             </div>
@@ -1003,7 +1207,7 @@ export default function AdmissionsPage() {
                 <input 
                   type="text" 
                   name="student_id" 
-                  value="Auto-generated" 
+                  value={formState.student_id || "Auto-generated"} 
                   disabled
                   className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-450 cursor-not-allowed"
                 />
@@ -1023,9 +1227,9 @@ export default function AdmissionsPage() {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Email Address *</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Email Address</label>
                 <input 
-                  type="email" required name="email" value={formState.email} onChange={handleFormChange}
+                  type="email" name="email" value={formState.email} onChange={handleFormChange}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
                 />
               </div>
@@ -1039,13 +1243,6 @@ export default function AdmissionsPage() {
                   <option>Female</option>
                   <option>Other</option>
                 </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Date of Joining</label>
-                <input 
-                  type="date" name="date_of_joining" value={formState.date_of_joining} onChange={handleFormChange}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
-                />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Residential Address</label>
@@ -1063,24 +1260,40 @@ export default function AdmissionsPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Selected Course *</label>
-                <input 
-                  type="text" name="course" value={formState.course} onChange={handleFormChange} placeholder="e.g. Full Stack Development"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
-                />
+                <select 
+                  name="course" value={formState.course} onChange={handleFormChange}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
+                >
+                  <option>Full Stack Development</option>
+                  <option>Python Programming</option>
+                  <option>AI & Data Science</option>
+                  <option>UI/UX Design</option>
+                  <option>Beginner Python Course</option>
+                </select>
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Course Duration</label>
-                <input 
-                  type="text" name="course_duration" value={formState.course_duration} onChange={handleFormChange} placeholder="e.g. 6 Months"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
-                />
+                <select 
+                  name="course_duration" value={formState.course_duration} onChange={handleFormChange}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
+                >
+                  <option>3 Months</option>
+                  <option>6 Months</option>
+                  <option>9 Months</option>
+                  <option>12 Months</option>
+                </select>
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Batch Timing</label>
-                <input 
-                  type="text" name="batch" value={formState.batch} onChange={handleFormChange} placeholder="e.g. Morning (9 AM - 11 AM)"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
-                />
+                <select 
+                  name="batch" value={formState.batch} onChange={handleFormChange}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
+                >
+                  <option>Morning (9 AM - 11 AM)</option>
+                  <option>Afternoon (2 PM - 4 PM)</option>
+                  <option>Evening (6 PM - 8 PM)</option>
+                  <option>Weekend Fast-Track</option>
+                </select>
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Trainer Assigned</label>
@@ -1133,10 +1346,16 @@ export default function AdmissionsPage() {
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Payment Mode</label>
-                <input 
-                  type="text" name="payment_mode" value={formState.payment_mode} onChange={handleFormChange} placeholder="e.g. UPI, GPay, Cash"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
-                />
+                <select 
+                  name="payment_mode" value={formState.payment_mode} onChange={handleFormChange}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
+                >
+                  <option>UPI</option>
+                  <option>GPay</option>
+                  <option>Bank Transfer</option>
+                  <option>Cash</option>
+                  <option>Card Payment</option>
+                </select>
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Transaction ID</label>
@@ -1147,12 +1366,63 @@ export default function AdmissionsPage() {
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Installment Plan</label>
-                <input 
-                  type="text" name="installment_option" value={formState.installment_option} onChange={handleFormChange} placeholder="e.g. 3 Installments"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
-                />
+                <select 
+                  name="installment_option" value={formState.installment_option} onChange={handleFormChange}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
+                >
+                  <option>One-Time Payment</option>
+                  <option>2 Installments</option>
+                  <option>3 Installments</option>
+                  <option>Monthly EMI Scheme</option>
+                </select>
               </div>
             </div>
+
+            {/* Installment Due Date Preview */}
+            {formInstallments.length > 0 && (
+              <div className="mt-4 bg-slate-50/80 rounded-2xl p-4 border border-slate-200/50 space-y-3 animate-fade-in">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-[#0f5a3e]" />
+                  <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Installment Due Date Schedule</h5>
+                </div>
+                <div className="space-y-2">
+                  {formInstallments.map((inst, idx) => (
+                    <div key={idx} className="bg-white rounded-xl p-3 border border-slate-100 flex items-center gap-3">
+                      <div className="text-[10px] font-black text-slate-400 w-20 shrink-0">EMI #{idx + 1}</div>
+                      <div className="flex-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase">Amount (₹)</label>
+                        <input
+                          type="number"
+                          value={inst.amount}
+                          onChange={(e) => {
+                            const updated = [...formInstallments];
+                            updated[idx].amount = parseFloat(e.target.value || "0");
+                            setFormInstallments(updated);
+                          }}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#0f5a3e]"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase">Due Date</label>
+                        <input
+                          type="date"
+                          value={inst.due_date}
+                          onChange={(e) => {
+                            const updated = [...formInstallments];
+                            updated[idx].due_date = e.target.value;
+                            setFormInstallments(updated);
+                          }}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#0f5a3e]"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[9px] text-slate-400 font-semibold">
+                  💡 You can adjust the due dates and amounts above. They will be saved with the admission record.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Section 4: Academic Details */}
@@ -1175,17 +1445,27 @@ export default function AdmissionsPage() {
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Year of Study</label>
-                <input 
-                  type="text" name="year_of_study" value={formState.year_of_study} onChange={handleFormChange} placeholder="e.g. 4th Year"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
-                />
+                <select 
+                  name="year_of_study" value={formState.year_of_study} onChange={handleFormChange}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
+                >
+                  <option>1st Year</option>
+                  <option>2nd Year</option>
+                  <option>3rd Year</option>
+                  <option>4th Year</option>
+                  <option>Graduated</option>
+                </select>
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Current Skill Level</label>
-                <input 
-                  type="text" name="skill_level" value={formState.skill_level} onChange={handleFormChange} placeholder="e.g. Beginner, Intermediate, Advanced"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
-                />
+                <select 
+                  name="skill_level" value={formState.skill_level} onChange={handleFormChange}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-855"
+                >
+                  <option>Beginner (No prior coding)</option>
+                  <option>Intermediate (Know basic syntax)</option>
+                  <option>Advanced (Know project architectures)</option>
+                </select>
               </div>
             </div>
           </div>
@@ -1196,17 +1476,28 @@ export default function AdmissionsPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Original Lead Source</label>
-                <input 
-                  type="text" name="lead_source" value={formState.lead_source} onChange={handleFormChange} placeholder="e.g. Instagram, Website, Referral"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
-                />
+                <select 
+                  name="lead_source" value={formState.lead_source} onChange={handleFormChange}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
+                >
+                  <option>Instagram</option>
+                  <option>Website</option>
+                  <option>Referral</option>
+                  <option>Facebook</option>
+                  <option>WhatsApp</option>
+                  <option>Direct Walk-In</option>
+                </select>
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Counselor in Charge</label>
-                <input 
-                  type="text" name="counselor_name" value={formState.counselor_name} onChange={handleFormChange} placeholder="e.g. Anita, Rajesh"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-800"
-                />
+                <select 
+                  name="counselor_name" value={formState.counselor_name} onChange={handleFormChange}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#0f5a3e] text-slate-850"
+                >
+                  <option>Anita</option>
+                  <option>Rajesh</option>
+                  <option>Priya</option>
+                </select>
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Date of Admission</label>
@@ -1231,7 +1522,7 @@ export default function AdmissionsPage() {
               type="submit" disabled={isSaving}
               className="bg-[#0f5a3e] hover:bg-[#0a3f2b] text-white px-8 py-3.5 rounded-xl text-xs font-black hover:scale-105 transition-transform disabled:opacity-75 shadow-md shadow-[#0f5a3e]/10"
             >
-              {isSaving ? (isEditMode ? "Updating..." : "Saving Admission...") : (isEditMode ? "Update Admission" : "Save Admission & Convert Lead")}
+              {isSaving ? "Saving Admission..." : (isEditMode ? "Save Changes" : "Save Admission & Convert Lead")}
             </button>
           </div>
         </form>
@@ -1239,7 +1530,7 @@ export default function AdmissionsPage() {
 
       {/* TAB 3: PENDING PAYMENTS */}
       {activeTab === "payments" && (
-        <div className="bg-white rounded-[28px] p-6 border border-slate-100 shadow-sm space-y-6 animate-in fade-in duration-150">
+        <div className="bg-white rounded-[28px] p-6 border border-slate-100 shadow-sm space-y-6 tab-content-enter">
           <div>
             <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Pending Installments & EMI Trackers</h3>
             <p className="text-[10px] text-slate-400 font-semibold">Monitor students with outstanding fee collections, overdue installments, and upcoming dues.</p>
@@ -1255,7 +1546,7 @@ export default function AdmissionsPage() {
                   <th className="px-5 py-4">Amount Paid</th>
                   <th className="px-5 py-4">Pending Dues</th>
                   <th className="px-5 py-4">Status</th>
-                  <th className="px-5 py-4">counselor</th>
+                  <th className="px-5 py-4">Counselor</th>
                   <th className="px-5 py-4 text-center">Installment Collection Actions</th>
                 </tr>
               </thead>
@@ -1282,6 +1573,15 @@ export default function AdmissionsPage() {
                       <td className="px-5 py-3.5 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button 
+                            onClick={() => {
+                              setSelectedStudent(student);
+                              setActiveTab("list");
+                            }}
+                            className="bg-[#0f5a3e]/10 hover:bg-[#0f5a3e]/20 text-[#0f5a3e] border border-[#0f5a3e]/20 px-2.5 py-1 rounded-lg text-[10px] font-black transition-colors"
+                          >
+                            Set Due Dates
+                          </button>
+                          <button 
                             onClick={() => handleMarkPaymentPaid(student.id)}
                             className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-250/20 px-2.5 py-1 rounded-lg text-[10px] font-black transition-colors"
                           >
@@ -1307,7 +1607,7 @@ export default function AdmissionsPage() {
 
       {/* TAB 4: COURSE-WISE ADMISSIONS ANALYTICS */}
       {activeTab === "analytics" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-150">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 tab-content-enter">
           {/* Main Chart Column */}
           <div className="lg:col-span-2 bg-white rounded-[28px] p-6 border border-slate-100 shadow-sm space-y-6">
             <div>
@@ -1382,7 +1682,7 @@ export default function AdmissionsPage() {
 
       {/* TAB 5: STUDENT PROFILES & DETAILS */}
       {activeTab === "profiles" && (
-        <div className="bg-white rounded-[28px] p-6 border border-slate-100 shadow-sm space-y-6 animate-in fade-in duration-150">
+        <div className="bg-white rounded-[28px] p-6 border border-slate-100 shadow-sm space-y-6 tab-content-enter">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Student Academic Directory</h3>
@@ -1465,7 +1765,7 @@ export default function AdmissionsPage() {
       {/* 5. Printable Invoice/Receipt Modal */}
       {showReceiptModal && receiptStudent && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl relative flex flex-col justify-between max-h-[90vh]">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl relative flex flex-col justify-between max-h-[90vh] animate-scale-in">
             <button 
               onClick={() => setShowReceiptModal(false)}
               className="absolute right-6 top-6 text-slate-400 hover:text-slate-600 transition-colors text-lg font-bold"

@@ -18,6 +18,7 @@ const counselorRouter = require('./services/counselorService');
 const publicRouter = require('./services/publicService');
 const whatsappRouter = require('./services/whatsappService');
 const courseRouter = require('./services/courseService');
+const installmentRouter = require('./services/installmentService');
 const { router: notificationRouter, initNotificationService } = require('./services/notificationService');
 
 // Initialize decoupled event subscribers for database auditing and real-time triggers
@@ -33,6 +34,7 @@ app.put(['/api/update-lead', '/server-api/update-lead'], (req, res, next) => {
 ['/api', '/server-api'].forEach(prefix => {
   app.use(`${prefix}/leads`, leadRouter);
   app.use(`${prefix}/admissions`, admissionRouter);
+  app.use(`${prefix}/installments`, installmentRouter);
   app.use(`${prefix}/ai-insights`, aiRouter);
   app.use(`${prefix}/insights`, aiRouter);
   app.use(`${prefix}/notifications`, notificationRouter);

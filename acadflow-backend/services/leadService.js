@@ -99,8 +99,8 @@ router.post('/', requireAuth, async (req, res) => {
     remarks 
   } = req.body;
 
-  if (!student_name || !phone_number) {
-    return res.status(400).json({ error: 'Student name and phone number are required' });
+  if (!phone_number) {
+    return res.status(400).json({ error: 'Phone number is required' });
   }
 
   try {

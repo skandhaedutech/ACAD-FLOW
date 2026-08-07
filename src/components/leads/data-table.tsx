@@ -1239,10 +1239,9 @@ export function LeadsDataTable() {
 
                   {/* Name */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Student Name *</label>
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Student Name</label>
                     <input
                       type="text"
-                      required
                       value={formInputs.student_name}
                       onChange={(e) => setFormInputs({ ...formInputs, student_name: e.target.value })}
                       placeholder="e.g. Rahul Sharma"
@@ -1265,10 +1264,9 @@ export function LeadsDataTable() {
 
                   {/* Email */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Email Address *</label>
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Email Address</label>
                     <input
                       type="email"
-                      required
                       value={formInputs.email}
                       onChange={(e) => setFormInputs({ ...formInputs, email: e.target.value })}
                       placeholder="e.g. rahul@gmail.com"

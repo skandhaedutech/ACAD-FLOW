@@ -120,4 +120,21 @@ router.put('/:id', requireAuth, async (req, res) => {
   }
 });
 
+// DELETE /api/courses/:id
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = getTenantDb(req);
+
+    const { error } = await db.from('courses').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+
+    if (error) throw error;
+
+    res.json({ message: 'Course deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting course:', error);
+    res.status(500).json({ error: 'Failed to delete course' });
+  }
+});
+
 module.exports = router;

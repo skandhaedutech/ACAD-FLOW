@@ -49,3 +49,11 @@ deploy-frontend/
 fresh-clone/
 hf-acadflow-temp/
 acadflow-crm/
+
+# postgres binaries
+acadflow-backend/postgres-binaries/
+acadflow-backend/postgres-binaries.zip
+
+# logs
+*.log
+{

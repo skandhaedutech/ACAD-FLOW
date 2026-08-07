@@ -293,6 +293,7 @@ router.post('/', requireAuth, async (req, res) => {
     const paymentStatus = parseFloat(pending_amount || 0) > 0 ? 'Pending' : 'Paid';
 
     if (hasAdmissionRecord) {
+      // Update admission and get admission id
       await db
         .from('admissions')
         .update({
@@ -302,8 +303,13 @@ router.post('/', requireAuth, async (req, res) => {
           joined_date: admission_date || new Date().toISOString()
         })
         .eq('lead_id', leadId);
+
+      // find the admission id for further processing
+      const { data: admRows } = await db.from('admissions').select('id').eq('lead_id', leadId).limit(1);
+      var admissionId = admRows && admRows.length > 0 ? admRows[0].id : null;
     } else {
-      await db
+      // Insert admission and capture id
+      const { data: insertedAdmissions, error: insertErr } = await db
         .from('admissions')
         .insert([{
           lead_id: leadId,
@@ -313,7 +319,26 @@ router.post('/', requireAuth, async (req, res) => {
           joined_date: admission_date || new Date().toISOString(),
           organization_id: orgId,
           branch_id: branchId
-        }]);
+        }])
+        .select('id');
+
+      if (insertErr) throw insertErr;
+      var admissionId = insertedAdmissions && insertedAdmissions.length > 0 ? insertedAdmissions[0].id : null;
+    }
+
+    // Persist custom EMIs into installments table if provided
+    try {
+      if (admissionId && Array.isArray(custom_emis) && custom_emis.length > 0) {
+        // remove existing installments for admission (replace semantics)
+        const { error: delErr } = await db.from('installments').delete().eq('admission_id', admissionId);
+        if (delErr) throw delErr;
+
+        const rows = custom_emis.map(i => ({ admission_id: admissionId, amount: i.amount || 0, due_date: i.due_date || null }));
+        const { error: insErr } = await db.from('installments').insert(rows).select('*');
+        if (insErr) throw insErr;
+      }
+    } catch (emiErr) {
+      console.error('Failed to persist custom_emis/installments:', emiErr);
     }
 
     // E. Emit decoupled events to the Event Bus
@@ -471,6 +496,21 @@ router.put('/:id', requireAuth, async (req, res) => {
       Object.keys(leadUpdate).forEach(k => leadUpdate[k] === undefined && delete leadUpdate[k]);
 
       await db.from('leads').update(leadUpdate).eq('id', leadId);
+    }
+
+    // Update installments table if custom_emis provided (replace semantics)
+    try {
+      if (Array.isArray(custom_emis)) {
+        const { error: delErr } = await db.from('installments').delete().eq('admission_id', id);
+        if (delErr) throw delErr;
+        if (custom_emis.length > 0) {
+          const rows = custom_emis.map(i => ({ admission_id: id, amount: i.amount || 0, due_date: i.due_date || null }));
+          const { error: insErr } = await db.from('installments').insert(rows).select('*');
+          if (insErr) throw insErr;
+        }
+      }
+    } catch (emiErr) {
+      console.error('Failed to update installments for admission:', emiErr);
     }
 
     res.json({ success: true, message: 'Admission updated successfully' });
